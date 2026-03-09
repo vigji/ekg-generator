@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ekg-generator"
+version = "0.1.0"
+description = "EKG monitor simulator for clinical education"
+requires-python = ">=3.9"
+dependencies = [
+    "neurokit2>=0.2",
+    "numpy>=1.21",
+    "scipy>=1.7",
+    "opencv-python>=4.5",
+    "Pillow>=9.0",
+    "matplotlib>=3.5",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff"]
