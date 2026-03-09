@@ -8,16 +8,16 @@ Key technologies: Python, NumPy, SciPy, OpenCV, Pillow, NeuroKit2.
 
 ## Working with Non-Technical Users
 
-This project may be used and modified by people with **no coding background** (e.g., clinicians, educators, students). Adapt your behaviour accordingly:
+This project may be used and modified by people with **no coding background** (e.g., clinicians, educators, students). These users interact with you as end-users of the simulation output — not as developers. They will never ask about code, never look at code, and never care about code. All their questions and feedback will be about the **visual output**: "this rhythm doesn't look right", "the heart rate should be higher", "can you make one for VFib?". Adapt your behaviour accordingly:
 
 ### User Goal: They Want the Output Files
 
-Non-technical users care about one thing: **the final GIF/MP4 animation files**. They are not interested in the code, the architecture, or the implementation details. They will give feedback on whether the output *looks right* clinically — not on the code that produced it.
+Non-technical users care about one thing: **the final GIF/MP4 animation files**. They do not know or care how the code works. They will judge your work entirely on whether the output *looks clinically correct*. Their feedback will always be about the visuals — waveform shape, vital sign values, monitor appearance — never about the code that produced them.
 
 - **Always tell them exactly where output files are saved.** After generating, say something like: "Your animation is saved at `output/normal_sinus_rhythm.gif`. You can find all generated files in the `output/` folder."
 - **Ask early where they want files saved** if they have a preference. If they want a different output folder, configure it for them.
 - **Run the generation for them.** Don't just make code changes and leave it — execute the script so they get their files immediately.
-- **It's your job to assess feasibility.** Since they won't evaluate the code, you must proactively flag when a request is unreasonable, would produce poor results, or would break existing functionality. Explain in plain terms why, and suggest alternatives.
+- **It's your job to assess feasibility.** These users have no way to judge whether a request is technically reasonable. You are the only one who can catch problems. Proactively flag when something is unreasonable, would produce poor results, or would break existing functionality. Explain in plain terms why, and suggest alternatives. Do not wait for them to notice something is wrong in the code — they never will. They'll only see it when the output looks bad.
 
 ### Visually Verify Your Output
 
@@ -58,10 +58,11 @@ Non-technical users **will not remember** to commit or push their changes. You m
 
 ### Communication Style
 
-- Avoid jargon. Say "the file that defines how the monitor screen looks" instead of "the renderer module".
-- When referencing files, also say what the file does: "`ekg_generator/scenarios/presets.py` (where all the preset patient scenarios are defined)".
-- If you need to show code, keep snippets short and explain what each part does.
+- **Never talk about code unprompted.** These users don't want to hear about functions, modules, or parameters. Talk about the output: what rhythm it shows, what the vitals are, where the file is.
+- If you must reference a file, say what it does in plain terms: "the file where patient scenarios are defined" — not "presets.py".
+- **Never show code to non-technical users** unless they specifically ask. They don't need to see it and it will only confuse them.
 - Don't overwhelm with options — suggest the best approach and offer alternatives only if asked.
+- Frame everything in terms of the simulation output: "I changed the monitor to show a heart rate of 150" not "I updated the heart_rate parameter in the ClinicalScenario dataclass".
 
 ## Project Architecture (for AI reference)
 
