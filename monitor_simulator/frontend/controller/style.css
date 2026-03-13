@@ -1,0 +1,309 @@
+/* Controller Interface — dark theme matching DART Sim Pro style */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    min-height: 100vh;
+    background: #0a0e1a;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: #e0e0e0;
+    overflow-x: hidden;
+}
+
+#controller {
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* --- Header --- */
+
+.header {
+    background: linear-gradient(135deg, #1565c0, #0d47a1);
+    border-radius: 10px;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    color: #fff;
+}
+
+.connection-status {
+    font-size: 12px;
+    padding: 4px 12px;
+    border-radius: 12px;
+    background: #c62828;
+    color: #fff;
+    font-weight: 500;
+}
+
+.connection-status.connected {
+    background: #2e7d32;
+}
+
+/* --- Section --- */
+
+.section {
+    background: #141929;
+    border-radius: 10px;
+    padding: 12px;
+}
+
+.section-label {
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #8899aa;
+    margin-bottom: 10px;
+}
+
+/* --- Rhythm Grid --- */
+
+.rhythm-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+}
+
+.rhythm-btn {
+    background: #1e2640;
+    border: 2px solid #2a3555;
+    border-radius: 8px;
+    padding: 8px 4px;
+    color: #c0d0e0;
+    font-size: 11px;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.15s;
+    line-height: 1.2;
+}
+
+.rhythm-btn:hover {
+    background: #263050;
+    border-color: #4080c0;
+}
+
+.rhythm-btn.active {
+    background: #1565c0;
+    border-color: #42a5f5;
+    color: #fff;
+    font-weight: 700;
+}
+
+.rhythm-btn .rhythm-abbr {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+    margin-bottom: 2px;
+}
+
+.rhythm-btn .rhythm-name {
+    display: block;
+    font-size: 9px;
+    opacity: 0.7;
+}
+
+/* --- SYNC Button --- */
+
+.sync-section {
+    display: flex;
+    justify-content: flex-end;
+    padding: 8px 12px;
+}
+
+.sync-btn {
+    background: #1e2640;
+    border: 2px solid #2a3555;
+    border-radius: 8px;
+    padding: 10px 28px;
+    color: #c0d0e0;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+}
+
+.sync-btn:hover {
+    border-color: #4080c0;
+}
+
+.sync-btn.active {
+    background: #e65100;
+    border-color: #ff9100;
+    color: #fff;
+}
+
+/* --- Sliders Row --- */
+
+.sliders-row {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+}
+
+.slider-col {
+    flex: 1;
+    background: #141929;
+    border-radius: 10px;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.slider-value {
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.slider-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8899aa;
+    text-align: center;
+}
+
+.slider-wrap {
+    height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.slider-range {
+    font-size: 9px;
+    color: #556677;
+    text-align: center;
+}
+
+/* --- Vertical Slider Styling --- */
+
+.vslider {
+    -webkit-appearance: none;
+    appearance: none;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 200px;
+    height: 36px;
+    background: transparent;
+    cursor: pointer;
+}
+
+/* Track */
+.vslider::-webkit-slider-runnable-track {
+    width: 6px;
+    height: 100%;
+    background: #2a3555;
+    border-radius: 3px;
+}
+
+.vslider::-moz-range-track {
+    width: 6px;
+    height: 100%;
+    background: #2a3555;
+    border-radius: 3px;
+}
+
+/* Thumb */
+.vslider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    cursor: pointer;
+    margin-left: -9px;
+}
+
+.vslider::-moz-range-thumb {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    cursor: pointer;
+}
+
+/* Slider colors per parameter */
+.ecg-slider::-webkit-slider-thumb { background: #00ff41; }
+.ecg-slider::-moz-range-thumb { background: #00ff41; }
+
+.bp-slider::-webkit-slider-thumb { background: #ff3333; }
+.bp-slider::-moz-range-thumb { background: #ff3333; }
+
+.spo2-slider::-webkit-slider-thumb { background: #00d4ff; }
+.spo2-slider::-moz-range-thumb { background: #00d4ff; }
+
+.capno-slider::-webkit-slider-thumb { background: #ffdd00; }
+.capno-slider::-moz-range-thumb { background: #ffdd00; }
+
+/* --- Color classes --- */
+
+.ecg-color { color: #00ff41; }
+.spo2-color { color: #00d4ff; }
+.capno-color { color: #ffdd00; }
+.bp-color { color: #ff3333; }
+
+/* --- Action Buttons --- */
+
+.actions-row {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding: 8px 0;
+}
+
+.action-btn {
+    padding: 12px 32px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.reset-btn {
+    background: #c62828;
+    color: #fff;
+}
+
+.reset-btn:hover {
+    background: #e53935;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 500px) {
+    .rhythm-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .slider-value {
+        font-size: 22px;
+    }
+
+    .slider-wrap {
+        height: 160px;
+    }
+}

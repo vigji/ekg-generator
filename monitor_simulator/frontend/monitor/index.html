@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Monitor</title>
+    <link rel="stylesheet" href="/monitor/static/style.css">
+</head>
+<body>
+    <div id="monitor">
+        <!-- ECG Row -->
+        <div class="waveform-row">
+            <div class="waveform-label">
+                <span class="label-text ecg-color">II</span>
+            </div>
+            <div class="waveform-canvas-wrap">
+                <canvas id="ecg-canvas"></canvas>
+            </div>
+            <div class="vitals-panel">
+                <span class="vital-label ecg-color">HR</span>
+                <span class="vital-value ecg-color" id="hr-value">72</span>
+                <span class="vital-unit ecg-color">bpm</span>
+            </div>
+        </div>
+
+        <!-- SpO2 Row -->
+        <div class="waveform-row">
+            <div class="waveform-label">
+                <span class="label-text spo2-color">SpO₂</span>
+            </div>
+            <div class="waveform-canvas-wrap">
+                <canvas id="spo2-canvas"></canvas>
+            </div>
+            <div class="vitals-panel">
+                <span class="vital-label spo2-color">SpO₂</span>
+                <span class="vital-value spo2-color" id="spo2-value">98</span>
+                <span class="vital-unit spo2-color">%</span>
+            </div>
+        </div>
+
+        <!-- Capnography Row -->
+        <div class="waveform-row">
+            <div class="waveform-label">
+                <span class="label-text capno-color">CO₂</span>
+            </div>
+            <div class="waveform-canvas-wrap">
+                <canvas id="capno-canvas"></canvas>
+            </div>
+            <div class="vitals-panel">
+                <span class="vital-label capno-color">EtCO₂</span>
+                <span class="vital-value capno-color" id="etco2-value">35</span>
+                <span class="vital-unit capno-color">mmHg</span>
+            </div>
+        </div>
+
+        <!-- Blood Pressure Row (numeric only) -->
+        <div class="bp-row">
+            <div class="bp-panel">
+                <span class="vital-label bp-color">NIBP</span>
+                <div class="bp-values">
+                    <span class="bp-main bp-color" id="bp-sys">120</span>
+                    <span class="bp-slash bp-color">/</span>
+                    <span class="bp-main bp-color" id="bp-dia">80</span>
+                </div>
+                <span class="vital-unit bp-color">mmHg</span>
+            </div>
+        </div>
+    </div>
+
+    <script src="/monitor/static/renderer.js"></script>
+    <script src="/monitor/static/monitor.js"></script>
+</body>
+</html>

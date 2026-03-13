@@ -1,0 +1,129 @@
+/* Patient Monitor Display — dark clinical monitor look */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    background: #000000;
+    font-family: 'Courier New', 'Lucida Console', monospace;
+    overflow: hidden;
+    cursor: none;
+}
+
+#monitor {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 4px;
+}
+
+/* --- Waveform rows --- */
+
+.waveform-row {
+    flex: 1;
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid #1a1a2e;
+    min-height: 0;
+}
+
+.waveform-label {
+    width: 50px;
+    display: flex;
+    align-items: flex-start;
+    padding-top: 4px;
+    padding-left: 4px;
+}
+
+.label-text {
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.waveform-canvas-wrap {
+    flex: 1;
+    position: relative;
+    min-width: 0;
+}
+
+.waveform-canvas-wrap canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+/* --- Vitals panel (right side) --- */
+
+.vitals-panel {
+    width: 140px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    padding-right: 12px;
+}
+
+.vital-label {
+    font-size: 13px;
+    font-weight: bold;
+    opacity: 0.8;
+}
+
+.vital-value {
+    font-size: 56px;
+    font-weight: bold;
+    line-height: 1.0;
+}
+
+.vital-unit {
+    font-size: 12px;
+    opacity: 0.6;
+}
+
+/* --- Blood pressure row --- */
+
+.bp-row {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 12px;
+    border-bottom: 1px solid #1a1a2e;
+}
+
+.bp-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.bp-values {
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+.bp-main {
+    font-size: 48px;
+    font-weight: bold;
+    line-height: 1.0;
+}
+
+.bp-slash {
+    font-size: 36px;
+    opacity: 0.7;
+}
+
+/* --- Colors matching clinical monitors --- */
+
+.ecg-color { color: #00ff41; }     /* Green */
+.spo2-color { color: #00d4ff; }    /* Light blue / cyan */
+.capno-color { color: #ffdd00; }   /* Yellow */
+.bp-color { color: #ff3333; }      /* Red */
