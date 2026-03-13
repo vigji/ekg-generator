@@ -18,7 +18,8 @@
         { id: 'psvt',                      abbr: 'PSVT', label: 'PSVT' },
         { id: 'junctional',               abbr: 'JR',   label: 'Junctional' },
         { id: 'av_block_1',               abbr: '1HB',  label: 'AV Block I' },
-        { id: 'av_block_2',               abbr: '2HB',  label: 'AV Block II' },
+        { id: 'av_block_2_mobitz1',       abbr: 'M1',   label: 'Mobitz I' },
+        { id: 'av_block_2_mobitz2',       abbr: 'M2',   label: 'Mobitz II' },
         { id: 'av_block_3',               abbr: '3HB',  label: 'AV Block III' },
         { id: 'vt_monomorphic',           abbr: 'VT',   label: 'V-Tach Mono' },
         { id: 'vt_polymorphic',           abbr: 'PVT',  label: 'V-Tach Poly' },
@@ -26,6 +27,10 @@
         { id: 'pacemaker',               abbr: 'PAC',  label: 'Pacemaker' },
         { id: 'agonal',                   abbr: 'AG',   label: 'Agonal' },
         { id: 'asystole',                abbr: 'ASY',  label: 'Asystole' },
+        { id: 'stemi',                    abbr: 'STEMI', label: 'STEMI' },
+        { id: 'wellens',                  abbr: 'WLN',  label: 'Wellens' },
+        { id: 'de_winter',               abbr: 'DW',   label: 'De Winter' },
+        { id: 'tca_toxicity',            abbr: 'TCA',  label: 'TCA Toxicity' },
     ];
 
     // --- State ---

@@ -42,6 +42,11 @@ RHYTHM_TYPES = [
     {"id": "agonal", "label": "Agonal Rhythm"},
     {"id": "pacemaker", "label": "Pacemaker Rhythm"},
     {"id": "av_block_1", "label": "AV Block I"},
-    {"id": "av_block_2", "label": "AV Block II"},
+    {"id": "av_block_2_mobitz1", "label": "AV Block II Mobitz I (Wenckebach)"},
+    {"id": "av_block_2_mobitz2", "label": "AV Block II Mobitz II"},
     {"id": "av_block_3", "label": "AV Block III"},
+    {"id": "stemi", "label": "STEMI"},
+    {"id": "wellens", "label": "Wellens Syndrome"},
+    {"id": "de_winter", "label": "De Winter T-waves"},
+    {"id": "tca_toxicity", "label": "TCA Toxicity"},
 ]

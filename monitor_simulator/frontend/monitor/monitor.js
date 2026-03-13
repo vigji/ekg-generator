@@ -34,6 +34,7 @@
     const SAMPLE_RATE = 500;
     let ecgBeatIndex = 0;
     let ecgSamplesRemaining = [];
+    let ecgRPeakPositions = []; // absolute sample indices of R-peaks within ecgSamplesRemaining
     let plethSamplesRemaining = [];
     let capnoSamplesRemaining = [];
 
@@ -71,27 +72,48 @@
 
         // --- ECG ---
         while (ecgSamplesRemaining.length < samplesToGenerate) {
+            const beatStartIdx = ecgSamplesRemaining.length;
             const beat = ECGRhythms.generateBeat(
                 state.rhythm, SAMPLE_RATE, state.heart_rate, ecgBeatIndex
             );
             ecgBeatIndex++;
-            // Convert to array for easier manipulation
+
+            // Find the true R-peak: highest positive sample in this beat
+            let maxVal = -Infinity, maxIdx = 0;
+            for (let i = 0; i < beat.length; i++) {
+                if (beat[i] > maxVal) { maxVal = beat[i]; maxIdx = i; }
+            }
+            // Only mark R-peak if there's a meaningful positive deflection
+            if (maxVal > 0.3) {
+                ecgRPeakPositions.push(beatStartIdx + maxIdx);
+            }
+
             ecgSamplesRemaining.push(...beat);
         }
         const ecgChunk = new Float32Array(ecgSamplesRemaining.splice(0, samplesToGenerate));
+
+        // Shift R-peak positions relative to the extracted chunk
         const syncOpts = {};
+        ecgRenderer.syncEnabled = state.sync_mode;
         if (state.sync_mode && ECGRhythms.supportsSyncMarker(state.rhythm)) {
-            // Mark R-peak positions
-            const rPeakFrac = ECGRhythms.getRPeakPosition(state.rhythm);
-            // Find peaks in this chunk
             const peaks = [];
-            let maxVal = -Infinity, maxIdx = 0;
-            for (let i = 1; i < ecgChunk.length - 1; i++) {
-                if (ecgChunk[i] > ecgChunk[i-1] && ecgChunk[i] > ecgChunk[i+1] && ecgChunk[i] > 0.5) {
-                    peaks.push(i / ecgChunk.length);
+            const remaining = [];
+            for (const pos of ecgRPeakPositions) {
+                if (pos < samplesToGenerate) {
+                    // This R-peak is within the current chunk
+                    peaks.push(pos / ecgChunk.length);
+                } else {
+                    // Keep for future chunks, adjusted for consumed samples
+                    remaining.push(pos - samplesToGenerate);
                 }
             }
+            ecgRPeakPositions = remaining;
             if (peaks.length > 0) syncOpts.syncMarkerAt = peaks;
+        } else {
+            // Still consume/shift positions even when sync is off
+            ecgRPeakPositions = ecgRPeakPositions
+                .map(p => p - samplesToGenerate)
+                .filter(p => p >= 0);
         }
         ecgRenderer.pushSamples(ecgChunk, SAMPLE_RATE, syncOpts);
 
@@ -150,12 +172,19 @@
             if (msg.type === 'state_update') {
                 const oldRhythm = state.rhythm;
                 const oldHR = state.heart_rate;
+                const oldSync = state.sync_mode;
                 Object.assign(state, msg.state);
                 updateNumerics();
+
+                // Clear SYNC markers when SYNC is turned off
+                if (oldSync && !state.sync_mode) {
+                    ecgRenderer.clearSyncMarkers();
+                }
 
                 // If rhythm or HR changed, flush waveform buffers for immediate response
                 if (state.rhythm !== oldRhythm || state.heart_rate !== oldHR) {
                     ecgSamplesRemaining = [];
+                    ecgRPeakPositions = [];
                     plethSamplesRemaining = [];
                     ecgBeatIndex = 0;
                 }

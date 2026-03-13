@@ -89,6 +89,9 @@ const ECGRhythms = {
         });
     },
 
+    // Persistent phase counter for VF continuity across chunks
+    _vfPhase: 0,
+
     _rhythmHandlers: {
         'sinus_rhythm': function(sr, hr, idx) {
             return ECGRhythms._normalBeat(sr, hr);
@@ -96,46 +99,63 @@ const ECGRhythms = {
 
         'sinus_tachycardia': function(sr, hr, idx) {
             return ECGRhythms._normalBeat(sr, hr, {
-                pAmp: 0.15, // slightly taller P waves
+                pAmp: 0.15,
                 tAmp: 0.20,
             });
         },
 
         'atrial_fibrillation': function(sr, hr, idx) {
-            // Irregular RR — vary the effective HR for this beat
-            const variation = 0.7 + Math.random() * 0.6; // 70-130% of base
+            // Irregular RR — wider variation (60-150% of base)
+            const variation = 0.6 + Math.random() * 0.9;
             const effectiveHR = hr * variation;
             const beat = ECGRhythms._normalBeat(sr, effectiveHR, {
-                pAmp: 0, // no P waves in AF
+                pAmp: 0,
             });
-            // Add fibrillatory baseline
+            // Tripled f-wave components for realistic fibrillatory baseline
+            const phase1 = idx * 31.7;
+            const phase2 = idx * 47.3;
+            const phase3 = idx * 19.1;
             for (let i = 0; i < beat.length; i++) {
-                beat[i] += 0.03 * (Math.sin(i * 0.8) + Math.sin(i * 1.3) + Math.random() * 0.5 - 0.25);
+                const t = i / sr;
+                beat[i] += 0.025 * (
+                    Math.sin(2 * Math.PI * 4.1 * t + phase1) +
+                    Math.sin(2 * Math.PI * 6.5 * t + phase2) +
+                    Math.sin(2 * Math.PI * 8.3 * t + phase3)
+                );
             }
             return beat;
         },
 
         'atrial_flutter': function(sr, hr, idx) {
-            // Sawtooth flutter waves at ~300/min with 4:1 conduction
-            const rr = 60.0 / hr;
+            // Classic inverted sawtooth flutter at ~300/min with variable conduction
+            // Ref: sharp negative deflection, gradual upslope back to baseline
+            const variation = 0.85 + Math.random() * 0.3; // variable block (85-115%)
+            const effectiveHR = hr * variation;
+            const rr = 60.0 / effectiveHR;
             const n = Math.round(rr * sr);
             const signal = new Float32Array(n);
             const flutterRate = 300;
             const flutterPeriod = sr * 60.0 / flutterRate;
 
             for (let i = 0; i < n; i++) {
-                // Sawtooth flutter
                 const phase = (i % flutterPeriod) / flutterPeriod;
-                signal[i] = 0.15 * (1 - 2 * phase);
+                // Inverted sawtooth: 30% sharp downstroke, 70% gradual upslope
+                if (phase < 0.3) {
+                    // Sharp negative deflection
+                    signal[i] = -0.22 * Math.sin(Math.PI * phase / 0.3);
+                } else {
+                    // Gradual upslope back to baseline
+                    const upPhase = (phase - 0.3) / 0.7;
+                    signal[i] = -0.22 * Math.sin(Math.PI * (1 - upPhase) * 0.3 / 0.3) * (1 - upPhase);
+                }
             }
-            // Overlay QRS
-            const qrs = ECGRhythms._normalBeat(sr, hr, { pAmp: 0 });
+            // Overlay narrow QRS
+            const qrs = ECGRhythms._normalBeat(sr, effectiveHR, { pAmp: 0, rAmp: 1.1 });
             const offset = Math.floor(0.37 * n - 0.37 * qrs.length);
             for (let i = 0; i < qrs.length && i + offset < n; i++) {
                 if (i + offset >= 0) {
-                    // Only overlay QRS-T, not the flat parts
                     const t = i / qrs.length;
-                    if (t > 0.3 && t < 0.7) {
+                    if (t > 0.28 && t < 0.72) {
                         signal[i + offset] += qrs[i];
                     }
                 }
@@ -144,65 +164,95 @@ const ECGRhythms = {
         },
 
         'atrial_tachycardia': function(sr, hr, idx) {
-            return ECGRhythms._normalBeat(sr, hr, {
-                pAmp: 0.10,
-                pPos: 0.18,  // P wave closer to QRS
-                pWidth: 0.03,
+            const effectiveHR = Math.max(hr, 120);
+            return ECGRhythms._normalBeat(sr, effectiveHR, {
+                pAmp: 0.18,
+                pPos: 0.16,
+                pWidth: 0.025,
             });
         },
 
         'psvt': function(sr, hr, idx) {
-            return ECGRhythms._normalBeat(sr, hr, {
-                pAmp: -0.05, // retrograde P wave (inverted, small)
-                pPos: 0.42,  // P after QRS
-                pWidth: 0.025,
+            const effectiveHR = Math.max(hr, 150);
+            // Slightly reduced amplitudes at high rates
+            const rateFactor = Math.min(1, 180 / effectiveHR);
+            return ECGRhythms._normalBeat(sr, effectiveHR, {
+                pAmp: -0.03,  // tiny retrograde P buried in ST
+                pPos: 0.44,
+                pWidth: 0.02,
+                rAmp: 0.85 * rateFactor + 0.15,
+                rWidth: 0.014,
+                tAmp: 0.18 * rateFactor + 0.05,
             });
         },
 
         'junctional': function(sr, hr, idx) {
             return ECGRhythms._normalBeat(sr, hr, {
-                pAmp: -0.06, // inverted P or absent
+                pAmp: -0.06,
                 pPos: 0.42,
                 pWidth: 0.03,
             });
         },
 
         'vt_monomorphic': function(sr, hr, idx) {
-            return ECGRhythms._wideBeat(sr, hr);
+            // Wide sinusoidal, deep trough, regular — min rate 140
+            const effectiveHR = Math.max(hr, 140);
+            return ECGRhythms._wideBeat(sr, effectiveHR, {
+                qAmp: -0.2,
+                qWidth: 0.03,
+                rAmp: 0.9,
+                rWidth: 0.06,
+                sAmp: -0.7,
+                sPos: 0.44,
+                sWidth: 0.04,
+                tAmp: -0.35,
+                tPos: 0.56,
+                tWidth: 0.06,
+            });
         },
 
         'vt_polymorphic': function(sr, hr, idx) {
-            // Varying amplitude and morphology
-            const phase = Math.sin(idx * 0.4) * 0.5 + 0.5;
-            return ECGRhythms._wideBeat(sr, hr, {
-                rAmp: 0.4 + phase * 0.8,
-                sAmp: -0.1 - phase * 0.3,
-                tAmp: -0.2 - (1 - phase) * 0.2,
+            // Torsades — axis rotation flips polarity, spindle amplitude
+            const effectiveHR = Math.max(hr, 180);
+            const polarity = Math.sin(idx * 0.25); // flips over ~25 beats
+            const envelope = 0.4 + 0.6 * Math.abs(Math.sin(idx * 0.12)); // spindle wax/wane
+            return ECGRhythms._wideBeat(sr, effectiveHR, {
+                qAmp: -0.15 * polarity * envelope,
+                qWidth: 0.03,
+                rAmp: 0.9 * polarity * envelope,
+                rWidth: 0.06,
+                sAmp: -0.5 * polarity * envelope,
+                sWidth: 0.04,
+                tAmp: -0.3 * polarity * envelope,
+                tWidth: 0.06,
             });
         },
 
         'ventricular_fibrillation': function(sr, hr, idx) {
-            // Chaotic waveform — no organized QRS
-            const n = Math.round(60.0 / Math.max(hr, 100) * sr);
+            // Chaotic, waxing/waning, FM synthesis, idx-based continuous phase
+            const n = Math.round(sr * 0.5); // 0.5 second chunks
             const signal = new Float32Array(n);
-            // Multiple overlapping sinusoids + noise
-            const freq1 = 4 + Math.random() * 4;
-            const freq2 = 2 + Math.random() * 3;
-            const amp = 0.3 + Math.random() * 0.4;
+
             for (let i = 0; i < n; i++) {
-                const t = i / sr;
-                signal[i] = amp * (
-                    0.5 * Math.sin(2 * Math.PI * freq1 * t + Math.random() * 0.5) +
-                    0.3 * Math.sin(2 * Math.PI * freq2 * t + Math.random() * 0.3) +
-                    0.2 * (Math.random() - 0.5)
+                const globalSample = ECGRhythms._vfPhase + i;
+                const t = globalSample / sr;
+                // Amplitude envelope: slow waxing/waning (~0.3 Hz)
+                const envelope = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 0.3 * t));
+                // FM synthesis: frequency drifts 3–9 Hz
+                const freqMod = 6 + 3 * Math.sin(2 * Math.PI * 0.2 * t);
+                const phase = 2 * Math.PI * freqMod * t;
+                signal[i] = envelope * (
+                    0.6 * Math.sin(phase) +
+                    0.25 * Math.sin(phase * 1.7 + 0.5) +
+                    0.15 * (Math.random() - 0.5)
                 );
             }
+            ECGRhythms._vfPhase += n;
             return signal;
         },
 
         'asystole': function(sr, hr, idx) {
-            // Flatline with minimal noise
-            const n = Math.round(sr * 1.5); // ~1.5 seconds per "beat"
+            const n = Math.round(sr * 1.5);
             const signal = new Float32Array(n);
             for (let i = 0; i < n; i++) {
                 signal[i] = 0.005 * (Math.random() - 0.5);
@@ -211,7 +261,6 @@ const ECGRhythms = {
         },
 
         'agonal': function(sr, hr, idx) {
-            // Slow, wide, bizarre complexes
             const effectiveHR = Math.min(hr, 35);
             return ECGRhythms._wideBeat(sr, effectiveHR, {
                 rAmp: 0.4 + Math.random() * 0.3,
@@ -223,35 +272,33 @@ const ECGRhythms = {
         },
 
         'pacemaker': function(sr, hr, idx) {
-            // Pacing spike followed by wide QRS
+            // Tall spike (2.0) single sample, then wider QRS
             const beat = ECGRhythms._wideBeat(sr, hr, {
                 rAmp: 0.7,
                 rWidth: 0.03,
             });
-            // Add pacing spike just before QRS
             const spikePos = Math.floor(0.33 * beat.length);
             if (spikePos < beat.length) {
-                beat[spikePos] = 1.5;
+                beat[spikePos] = 2.0;
                 if (spikePos + 1 < beat.length) beat[spikePos + 1] = -0.3;
             }
             return beat;
         },
 
         'av_block_1': function(sr, hr, idx) {
-            // Prolonged PR interval
             return ECGRhythms._normalBeat(sr, hr, {
-                pPos: 0.15,  // P wave earlier → longer PR
+                pPos: 0.15,
                 qPos: 0.36,
                 rPos: 0.39,
             });
         },
 
-        'av_block_2': function(sr, hr, idx) {
-            // Mobitz Type I (Wenckebach) — progressively longer PR, then dropped beat
+        'av_block_2_mobitz1': function(sr, hr, idx) {
+            // Wenckebach — progressive PR prolongation, 4th beat dropped
             const cycleLen = 4;
             const beatInCycle = idx % cycleLen;
             if (beatInCycle === cycleLen - 1) {
-                // Dropped beat — just P wave
+                // Dropped beat — P wave only
                 const rr = 60.0 / hr;
                 const n = Math.round(rr * sr);
                 const signal = new Float32Array(n);
@@ -262,29 +309,111 @@ const ECGRhythms = {
                 }
                 return signal;
             }
-            // Progressive PR prolongation
-            const prShift = beatInCycle * 0.03;
+            // PR increases progressively (0.02 per beat)
+            const prShift = beatInCycle * 0.02;
             return ECGRhythms._normalBeat(sr, hr, {
                 pPos: 0.18 - prShift,
             });
         },
 
+        'av_block_2_mobitz2': function(sr, hr, idx) {
+            // Fixed PR interval, sudden dropped beat (3:1 or 4:1)
+            const conductionRatio = (idx % 7 < 4) ? 3 : 4; // alternate 3:1 and 4:1
+            const beatInCycle = idx % conductionRatio;
+            if (beatInCycle === conductionRatio - 1) {
+                // Dropped beat — P wave only, no QRS
+                const rr = 60.0 / hr;
+                const n = Math.round(rr * sr);
+                const signal = new Float32Array(n);
+                for (let i = 0; i < n; i++) {
+                    const t = i / sr / rr;
+                    signal[i] = 0.12 * Math.exp(-Math.pow((t - 0.22) / 0.04, 2) / 2);
+                    signal[i] += 0.003 * (Math.random() - 0.5);
+                }
+                return signal;
+            }
+            // Conducted beats — fixed PR
+            return ECGRhythms._normalBeat(sr, hr, {
+                pPos: 0.18,
+            });
+        },
+
         'av_block_3': function(sr, hr, idx) {
-            // Complete heart block — P waves march through at atrial rate,
-            // ventricles escape at ~35 bpm
+            // Complete heart block — P waves march independently at ~75 bpm
+            // Ventricles escape at ~35 bpm with wide QRS
             const ventRate = 35;
             const beat = ECGRhythms._wideBeat(sr, ventRate, {
                 rAmp: 0.7,
             });
-            // Add P waves at the atrial rate (dissociated)
+            // P waves at atrial rate, dissociated via modular arithmetic
             const atrialRate = 75;
-            const atrialPeriod = sr * 60.0 / atrialRate;
-            const pOffset = (idx * 137) % Math.floor(atrialPeriod); // pseudo-random P placement
+            const atrialPeriodSamples = Math.round(sr * 60.0 / atrialRate);
+            const ventPeriodSamples = beat.length;
+            // Use golden ratio offset for smooth dissociation across beats
+            const pStartOffset = Math.round((idx * atrialPeriodSamples * 0.618) % atrialPeriodSamples);
             for (let i = 0; i < beat.length; i++) {
-                const dist = ((i + pOffset) % atrialPeriod) / sr;
-                beat[i] += 0.12 * Math.exp(-Math.pow(dist / 0.04, 2) / 2);
+                const posInAtrial = (i + pStartOffset) % atrialPeriodSamples;
+                const tNorm = posInAtrial / atrialPeriodSamples;
+                beat[i] += 0.12 * Math.exp(-Math.pow((tNorm - 0.15) / 0.04, 2) / 2);
             }
             return beat;
+        },
+
+        'stemi': function(sr, hr, idx) {
+            // ST elevation merging into broad elevated T-wave
+            return ECGRhythms._normalBeat(sr, hr, {
+                stElev: 0.15,
+                tAmp: 0.5,
+                tWidth: 0.08,
+            });
+        },
+
+        'wellens': function(sr, hr, idx) {
+            // Normal sinus with deeply inverted/biphasic T-wave
+            return ECGRhythms._normalBeat(sr, hr, {
+                tAmp: -0.3,
+                tWidth: 0.07,
+            });
+        },
+
+        'de_winter': function(sr, hr, idx) {
+            // J-point ST depression + tall peaked symmetric T
+            const beat = ECGRhythms._normalBeat(sr, hr, {
+                tAmp: 0.6,
+                tWidth: 0.05,
+            });
+            // Add slight ST depression after QRS (between S and T)
+            const rr = 60.0 / hr;
+            const n = beat.length;
+            for (let i = 0; i < n; i++) {
+                const t = i / sr / rr;
+                if (t > 0.41 && t < 0.50) {
+                    beat[i] -= 0.05;
+                }
+            }
+            return beat;
+        },
+
+        'tca_toxicity': function(sr, hr, idx) {
+            // Sinus tach with very wide QRS, P waves partially buried
+            const effectiveHR = Math.max(hr, 110);
+            return ECGRhythms._normalBeat(sr, effectiveHR, {
+                pAmp: 0.08,
+                pPos: 0.20,
+                pWidth: 0.03,
+                qAmp: -0.12,
+                qPos: 0.30,
+                qWidth: 0.025,
+                rAmp: 0.85,
+                rPos: 0.37,
+                rWidth: 0.04,
+                sAmp: -0.30,
+                sPos: 0.45,
+                sWidth: 0.035,
+                tAmp: -0.25,
+                tPos: 0.60,
+                tWidth: 0.07,
+            });
         },
     },
 
@@ -292,7 +421,7 @@ const ECGRhythms = {
      * Returns true if the rhythm supports SYNC markers (has identifiable R waves).
      */
     supportsSyncMarker(rhythm) {
-        const noSync = ['ventricular_fibrillation', 'asystole'];
+        const noSync = ['ventricular_fibrillation', 'asystole', 'vt_polymorphic'];
         return !noSync.includes(rhythm);
     },
 
@@ -427,6 +556,7 @@ class WaveformRenderer {
 
         // SYNC markers: array of pixel positions where markers should appear
         this.syncMarkers = [];
+        this.syncEnabled = false;
 
         this._resize();
         this._resizeObserver = new ResizeObserver(() => this._resize());
@@ -449,6 +579,10 @@ class WaveformRenderer {
             this.writePos = 0;
             this.syncMarkers = [];
         }
+    }
+
+    clearSyncMarkers() {
+        this.syncMarkers = [];
     }
 
     /**
@@ -531,7 +665,7 @@ class WaveformRenderer {
         if (drawing) ctx.stroke();
 
         // Draw SYNC markers (white triangles above R peaks)
-        if (this.syncMarkers.length > 0) {
+        if (this.syncEnabled && this.syncMarkers.length > 0) {
             ctx.fillStyle = '#ffffff';
             for (const pos of this.syncMarkers) {
                 const distToWrite = (writePos - pos + len) % len;
