@@ -47,17 +47,14 @@
             text-decoration: none;
             transition: all 0.15s;
         }
-        a.btn-controller {
-            background: linear-gradient(135deg, #1565c0, #0d47a1);
+        a.btn-controller, a.btn-monitor {
+            background: transparent;
+            border: 2px solid #fff;
             color: #fff;
         }
-        a.btn-controller:hover { background: linear-gradient(135deg, #1976d2, #1565c0); }
-        a.btn-monitor {
-            background: #1e2640;
-            border: 2px solid #2a3555;
-            color: #00ff41;
+        a.btn-controller:hover, a.btn-monitor:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
-        a.btn-monitor:hover { border-color: #00ff41; background: #263050; }
         .instructions {
             font-size: 13px;
             color: #556677;
@@ -102,13 +99,13 @@
         </div>
         <div class="footer">
             <p>
-                <a href="https://github.com/vigji/ekg-generator/issues" target="_blank">Report a bug</a>
+                <a href="https://github.com/vigji/ekg-generator/issues/new?labels=bug&template=blank" target="_blank">Report a bug</a>
                 &nbsp;&middot;&nbsp;
-                <a href="https://github.com/vigji/ekg-generator/issues" target="_blank">Suggest improvements</a>
+                <a href="https://github.com/vigji/ekg-generator/issues/new?labels=enhancement&template=blank" target="_blank">Suggest improvements</a>
             </p>
             <p>Contributions and clinical observations are welcome — open an issue on GitHub!</p>
             <p class="credits">
-                Created by Caterina Zattera, Ospedale Santa Maria del Carmine, Rovereto
+                Created by Caterina Zattera (Ospedale Santa Maria del Carmine, Rovereto) and Luigi Petrucco
                 <br>
                 Licensed under the <a href="https://github.com/vigji/ekg-generator/blob/main/LICENSE" target="_blank">BSD 3-Clause License</a>
             </p>
