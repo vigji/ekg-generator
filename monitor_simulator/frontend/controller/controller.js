@@ -84,8 +84,18 @@
         });
     }
 
+    // Pulseless rhythms: no cardiac output → BP reads 0
+    const PULSELESS_RHYTHMS = new Set([
+        'ventricular_fibrillation', 'asystole', 'vt_polymorphic', 'agonal',
+    ]);
+
     function selectRhythm(rhythmId) {
-        sendUpdate({ rhythm: rhythmId, heart_rate: getHRDefault(rhythmId) });
+        const update = { rhythm: rhythmId, heart_rate: getHRDefault(rhythmId) };
+        if (PULSELESS_RHYTHMS.has(rhythmId)) {
+            update.systolic = 0;
+            update.diastolic = 0;
+        }
+        sendUpdate(update);
     }
 
     function updateRhythmHighlight(rhythmId) {
