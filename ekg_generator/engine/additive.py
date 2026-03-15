@@ -11,23 +11,36 @@ import numpy as np
 from scipy import signal as sp_signal
 
 
+def _detect_r_peaks(ecg: np.ndarray, sampling_rate: int) -> np.ndarray:
+    """Detect R-peak sample indices from an ECG signal."""
+    # Minimum distance between peaks: 300ms (200 bpm max)
+    min_distance = int(0.3 * sampling_rate)
+    # Threshold: peaks must be at least 40% of the max amplitude
+    threshold = 0.4 * np.max(ecg)
+    peaks, _ = sp_signal.find_peaks(ecg, height=threshold, distance=min_distance)
+    return peaks
+
+
 def add_pacing_spikes(
     ecg: np.ndarray,
     beat_times: np.ndarray,
     sampling_rate: int,
     spike_type: str = "vvi",
     spike_amplitude: float = 3.0,
-    spike_width_ms: float = 2.0,
+    spike_width_ms: float = 4.0,
     ti: tuple = (-70, -15, 0, 15, 100),
 ) -> np.ndarray:
     """Add pacing spikes to an ECG signal.
+
+    Detects actual R-peaks in the ECG signal and places spikes relative
+    to those, ensuring spikes are always correctly positioned before the QRS.
 
     Parameters
     ----------
     ecg : np.ndarray
         Base ECG signal.
     beat_times : np.ndarray
-        Array of R-peak times in seconds.
+        Array of scheduled beat times in seconds (used as fallback).
     sampling_rate : int
         Sampling rate in Hz.
     spike_type : str
@@ -40,22 +53,26 @@ def add_pacing_spikes(
         ECGSYN angular positions (used to estimate P wave offset from R peak).
     """
     result = ecg.copy()
-    spike_width_samples = max(1, int(spike_width_ms * sampling_rate / 1000))
+    spike_width_samples = max(2, int(spike_width_ms * sampling_rate / 1000))
 
-    for bt in beat_times:
-        # Ventricular spike: just before the QRS
+    # Detect actual R-peaks from the ECG signal
+    r_peak_indices = _detect_r_peaks(ecg, sampling_rate)
+    if len(r_peak_indices) == 0:
+        # Fallback to scheduled beat_times if detection fails
+        r_peak_indices = (beat_times * sampling_rate).astype(int)
+
+    for r_idx in r_peak_indices:
+        # Ventricular spike: 60ms before R peak
         if spike_type in ("vvi", "ddd"):
-            v_spike_time = bt - 0.01  # 10ms before R peak
-            idx = int(v_spike_time * sampling_rate)
-            if 0 <= idx < len(result) - spike_width_samples:
-                result[idx:idx + spike_width_samples] = spike_amplitude
+            v_idx = r_idx - int(0.06 * sampling_rate)
+            if 0 <= v_idx < len(result) - spike_width_samples:
+                result[v_idx:v_idx + spike_width_samples] = spike_amplitude
 
-        # Atrial spike: before the P wave (~200ms before R)
+        # Atrial spike: before the P wave (~250ms before R)
         if spike_type in ("ddd", "aai"):
-            a_spike_time = bt - 0.20  # ~200ms before R peak (near P wave)
-            idx = int(a_spike_time * sampling_rate)
-            if 0 <= idx < len(result) - spike_width_samples:
-                result[idx:idx + spike_width_samples] = spike_amplitude * 0.6
+            a_idx = r_idx - int(0.25 * sampling_rate)
+            if 0 <= a_idx < len(result) - spike_width_samples:
+                result[a_idx:a_idx + spike_width_samples] = spike_amplitude * 0.6
 
     return result
 

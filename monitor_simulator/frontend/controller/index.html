@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Monitor Controller</title>
-    <link rel="stylesheet" href="/controller/static/style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="controller">
@@ -22,75 +22,94 @@
             </div>
         </div>
 
-        <!-- SYNC toggle -->
-        <div class="section sync-section">
-            <button class="sync-btn" id="sync-btn">SYNC</button>
-        </div>
-
-        <!-- Parameter Sliders (5 columns) -->
-        <div class="sliders-row">
-            <!-- Heart Rate -->
-            <div class="slider-col">
-                <div class="slider-value ecg-color" id="hr-display">72</div>
-                <div class="slider-label">Heart Rate</div>
-                <div class="slider-wrap">
-                    <input type="range" id="hr-slider" min="20" max="250" value="72"
-                           orient="vertical" class="vslider ecg-slider">
+        <!-- Sliders + Controls side-by-side -->
+        <div class="bottom-row">
+            <div class="sliders-row">
+                <!-- Heart Rate -->
+                <div class="slider-col">
+                    <div class="slider-value ecg-color" id="hr-display">72</div>
+                    <div class="slider-label">Heart Rate</div>
+                    <div class="slider-wrap">
+                        <input type="range" id="hr-slider" min="20" max="250" value="72"
+                               orient="vertical" class="vslider ecg-slider">
+                        <div class="slider-scale" id="hr-scale"></div>
+                    </div>
+                    <div class="slider-range">20–250 bpm</div>
                 </div>
-                <div class="slider-range">20–250 bpm</div>
+
+                <!-- Systolic BP -->
+                <div class="slider-col">
+                    <div class="slider-value bp-color" id="sys-display">120</div>
+                    <div class="slider-label">Systolic</div>
+                    <div class="slider-wrap">
+                        <input type="range" id="sys-slider" min="30" max="300" value="120"
+                               orient="vertical" class="vslider bp-slider">
+                        <div class="slider-scale" id="sys-scale"></div>
+                    </div>
+                    <div class="slider-range">30–300</div>
+                </div>
+
+                <!-- Diastolic BP -->
+                <div class="slider-col">
+                    <div class="slider-value bp-color" id="dia-display">80</div>
+                    <div class="slider-label">Diastolic</div>
+                    <div class="slider-wrap">
+                        <input type="range" id="dia-slider" min="10" max="200" value="80"
+                               orient="vertical" class="vslider bp-slider">
+                        <div class="slider-scale" id="dia-scale"></div>
+                    </div>
+                    <div class="slider-range">10–200</div>
+                </div>
+
+                <!-- SpO2 -->
+                <div class="slider-col">
+                    <div class="slider-value spo2-color" id="spo2-display">98</div>
+                    <div class="slider-label">SpO₂</div>
+                    <div class="slider-wrap">
+                        <input type="range" id="spo2-slider" min="50" max="100" value="98"
+                               orient="vertical" class="vslider spo2-slider">
+                        <div class="slider-scale" id="spo2-scale"></div>
+                    </div>
+                    <div class="slider-range">50–100 %</div>
+                </div>
+
+                <!-- EtCO2 -->
+                <div class="slider-col">
+                    <div class="slider-value capno-color" id="etco2-display">35</div>
+                    <div class="slider-label">EtCO₂</div>
+                    <div class="slider-wrap">
+                        <input type="range" id="etco2-slider" min="0" max="80" value="35"
+                               orient="vertical" class="vslider capno-slider">
+                        <div class="slider-scale" id="etco2-scale"></div>
+                    </div>
+                    <div class="slider-range">0–80 mmHg</div>
+                </div>
             </div>
 
-            <!-- Systolic BP -->
-            <div class="slider-col">
-                <div class="slider-value bp-color" id="sys-display">120</div>
-                <div class="slider-label">Systolic</div>
-                <div class="slider-wrap">
-                    <input type="range" id="sys-slider" min="30" max="300" value="120"
-                           orient="vertical" class="vslider bp-slider">
+            <!-- Controls panel -->
+            <div class="controls-panel">
+                <button class="sync-btn" id="sync-btn">SYNC</button>
+                <button class="pacing-btn" id="pacing-btn">PACING</button>
+                <div class="pacing-controls" id="pacing-controls" style="display: none;">
+                    <div class="pacing-param">
+                        <span class="pacing-label">Rate</span>
+                        <input type="range" id="pacing-rate-slider" min="40" max="180" value="70" class="hslider pacing-slider">
+                        <span class="pacing-value" id="pacing-rate-display">70</span>
+                        <span class="pacing-unit">bpm</span>
+                    </div>
+                    <div class="pacing-param">
+                        <span class="pacing-label">Current</span>
+                        <input type="range" id="pacing-current-slider" min="0" max="200" value="70" class="hslider pacing-slider">
+                        <span class="pacing-value" id="pacing-current-display">70</span>
+                        <span class="pacing-unit">mA</span>
+                    </div>
                 </div>
-                <div class="slider-range">30–300</div>
+                <button class="action-btn reset-btn" id="reset-btn">Reset</button>
             </div>
-
-            <!-- Diastolic BP -->
-            <div class="slider-col">
-                <div class="slider-value bp-color" id="dia-display">80</div>
-                <div class="slider-label">Diastolic</div>
-                <div class="slider-wrap">
-                    <input type="range" id="dia-slider" min="10" max="200" value="80"
-                           orient="vertical" class="vslider bp-slider">
-                </div>
-                <div class="slider-range">10–200</div>
-            </div>
-
-            <!-- SpO2 -->
-            <div class="slider-col">
-                <div class="slider-value spo2-color" id="spo2-display">98</div>
-                <div class="slider-label">SpO₂</div>
-                <div class="slider-wrap">
-                    <input type="range" id="spo2-slider" min="50" max="100" value="98"
-                           orient="vertical" class="vslider spo2-slider">
-                </div>
-                <div class="slider-range">50–100 %</div>
-            </div>
-
-            <!-- EtCO2 -->
-            <div class="slider-col">
-                <div class="slider-value capno-color" id="etco2-display">35</div>
-                <div class="slider-label">EtCO₂</div>
-                <div class="slider-wrap">
-                    <input type="range" id="etco2-slider" min="0" max="80" value="35"
-                           orient="vertical" class="vslider capno-slider">
-                </div>
-                <div class="slider-range">0–80 mmHg</div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="actions-row">
-            <button class="action-btn reset-btn" id="reset-btn">Reset</button>
         </div>
     </div>
 
-    <script src="/controller/static/controller.js"></script>
+    <script src="../shared/channel.js"></script>
+    <script src="controller.js"></script>
 </body>
 </html>

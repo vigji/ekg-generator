@@ -1,4 +1,4 @@
-/* Controller Interface — dark theme matching DART Sim Pro style */
+/* Controller Interface — clean dark medical theme */
 
 * {
     margin: 0;
@@ -13,6 +13,7 @@ html, body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     color: #e0e0e0;
     overflow-x: hidden;
+    --track-len: clamp(100px, 13vw, 160px);
 }
 
 #controller {
@@ -21,7 +22,7 @@ html, body {
     padding: 12px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 10px;
 }
 
 /* --- Header --- */
@@ -36,18 +37,18 @@ html, body {
 }
 
 .header h1 {
-    font-size: 18px;
+    font-size: 17px;
     font-weight: 600;
     color: #fff;
 }
 
 .connection-status {
-    font-size: 12px;
-    padding: 4px 12px;
+    font-size: 11px;
+    padding: 4px 14px;
     border-radius: 12px;
     background: #c62828;
     color: #fff;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .connection-status.connected {
@@ -57,17 +58,18 @@ html, body {
 /* --- Section --- */
 
 .section {
-    background: #141929;
+    background: #111827;
+    border: 1px solid #1c2538;
     border-radius: 10px;
-    padding: 12px;
+    padding: 14px;
 }
 
 .section-label {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 11px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #8899aa;
+    letter-spacing: 1px;
+    color: #64748b;
     margin-bottom: 10px;
 }
 
@@ -80,11 +82,11 @@ html, body {
 }
 
 .rhythm-btn {
-    background: #1e2640;
-    border: 2px solid #2a3555;
+    background: #1a2236;
+    border: 1px solid #263050;
     border-radius: 8px;
     padding: 6px 3px;
-    color: #c0d0e0;
+    color: #8899aa;
     font-size: 10px;
     font-weight: 500;
     text-align: center;
@@ -94,8 +96,9 @@ html, body {
 }
 
 .rhythm-btn:hover {
-    background: #263050;
-    border-color: #4080c0;
+    background: #1e2a44;
+    border-color: #3b6db5;
+    color: #b0c0d0;
 }
 
 .rhythm-btn.active {
@@ -107,104 +110,228 @@ html, body {
 
 .rhythm-btn .rhythm-abbr {
     display: block;
-    font-size: 16px;
+    font-size: 15px;
     font-weight: 700;
     margin-bottom: 2px;
 }
 
 .rhythm-btn .rhythm-name {
     display: block;
-    font-size: 9px;
-    opacity: 0.7;
+    font-size: 8px;
+    opacity: 0.55;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
-/* --- SYNC Button --- */
+/* --- Bottom Row (Sliders + Controls) --- */
 
-.sync-section {
+.bottom-row {
     display: flex;
-    justify-content: flex-end;
-    padding: 8px 12px;
+    gap: 8px;
 }
-
-.sync-btn {
-    background: #1e2640;
-    border: 2px solid #2a3555;
-    border-radius: 8px;
-    padding: 10px 28px;
-    color: #c0d0e0;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.15s;
-    letter-spacing: 1px;
-}
-
-.sync-btn:hover {
-    border-color: #4080c0;
-}
-
-.sync-btn.active {
-    background: #e65100;
-    border-color: #ff9100;
-    color: #fff;
-}
-
-/* --- Sliders Row --- */
 
 .sliders-row {
     display: flex;
-    gap: 8px;
-    justify-content: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
 }
+
+/* --- Controls Panel (right side) --- */
+
+.controls-panel {
+    width: 170px;
+    flex-shrink: 0;
+    background: #111827;
+    border: 1px solid #1c2538;
+    border-radius: 10px;
+    padding: 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.sync-btn, .pacing-btn {
+    background: #1a2236;
+    border: 1px solid #263050;
+    border-radius: 8px;
+    padding: 12px 0;
+    color: #8899aa;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1.5px;
+    text-align: center;
+}
+
+.sync-btn:hover, .pacing-btn:hover {
+    border-color: #3b6db5;
+    color: #b0c0d0;
+}
+
+.sync-btn.active {
+    background: #c2410c;
+    border-color: #ea580c;
+    color: #fff;
+}
+
+.pacing-btn.active {
+    background: #1565c0;
+    border-color: #42a5f5;
+    color: #fff;
+}
+
+/* --- Pacing Controls --- */
+
+.pacing-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.pacing-param {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.pacing-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #64748b;
+    width: 100%;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pacing-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: #42a5f5;
+    min-width: 28px;
+    text-align: right;
+}
+
+.pacing-unit {
+    font-size: 9px;
+    color: #475569;
+}
+
+.hslider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    min-width: 0;
+    height: 4px;
+    background: #2a3555;
+    border-radius: 2px;
+    cursor: pointer;
+    flex: 1;
+}
+
+.hslider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #42a5f5;
+    border: 2px solid #fff;
+    cursor: pointer;
+}
+
+.hslider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #42a5f5;
+    border: 2px solid #fff;
+    cursor: pointer;
+}
+
+/* --- Slider Columns --- */
 
 .slider-col {
     flex: 1;
-    background: #141929;
+    min-width: 0;
+    background: #111827;
+    border: 1px solid #1c2538;
     border-radius: 10px;
-    padding: 12px 8px;
+    padding: 10px 4px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 6px;
+    gap: 4px;
 }
 
 .slider-value {
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 700;
     line-height: 1;
 }
 
 .slider-label {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
-    color: #8899aa;
+    color: #64748b;
     text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .slider-wrap {
-    height: 260px;
+    height: calc(var(--track-len) + 12px);
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
 }
 
 .slider-range {
-    font-size: 9px;
-    color: #556677;
+    font-size: 8px;
+    color: #475569;
     text-align: center;
+}
+
+/* --- Slider Scale --- */
+
+.slider-scale {
+    position: absolute;
+    right: 0;
+    height: var(--track-len);
+    width: 26px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.scale-tick {
+    position: absolute;
+    right: 0;
+    transform: translateY(50%);
+    font-size: 8px;
+    color: #475569;
+    font-weight: 600;
+    white-space: nowrap;
 }
 
 /* --- Vertical Slider Styling --- */
 
+/*
+ * Uses writing-mode for native vertical rendering.
+ * No CSS rotation = no axis-swapped margin bugs.
+ */
 .vslider {
     -webkit-appearance: none;
     appearance: none;
-    width: 220px;
-    height: 36px;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 24px;
+    height: var(--track-len);
     background: transparent;
     cursor: pointer;
-    transform: rotate(-90deg);
-    transform-origin: center center;
 }
 
 /* Track */
@@ -222,38 +349,38 @@ html, body {
     border-radius: 3px;
 }
 
-/* Thumb */
+/* Thumb — margin-left centers it on the 6px track */
 .vslider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     border: 2px solid #fff;
     cursor: pointer;
-    margin-left: -9px;
+    margin-left: -8px;
 }
 
 .vslider::-moz-range-thumb {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     border: 2px solid #fff;
     cursor: pointer;
 }
 
 /* Slider colors per parameter */
-.ecg-slider::-webkit-slider-thumb { background: #00ff41; }
-.ecg-slider::-moz-range-thumb { background: #00ff41; }
+.ecg-slider::-webkit-slider-thumb { background: #00dd38; }
+.ecg-slider::-moz-range-thumb { background: #00dd38; }
 
-.bp-slider::-webkit-slider-thumb { background: #ff3333; }
-.bp-slider::-moz-range-thumb { background: #ff3333; }
+.bp-slider::-webkit-slider-thumb { background: #ee3333; }
+.bp-slider::-moz-range-thumb { background: #ee3333; }
 
-.spo2-slider::-webkit-slider-thumb { background: #00d4ff; }
-.spo2-slider::-moz-range-thumb { background: #00d4ff; }
+.spo2-slider::-webkit-slider-thumb { background: #00bbdd; }
+.spo2-slider::-moz-range-thumb { background: #00bbdd; }
 
-.capno-slider::-webkit-slider-thumb { background: #ffdd00; }
-.capno-slider::-moz-range-thumb { background: #ffdd00; }
+.capno-slider::-webkit-slider-thumb { background: #ddcc00; }
+.capno-slider::-moz-range-thumb { background: #ddcc00; }
 
 /* --- Color classes --- */
 
@@ -264,23 +391,18 @@ html, body {
 
 /* --- Action Buttons --- */
 
-.actions-row {
-    display: flex;
-    gap: 10px;
-    justify-content: center;
-    padding: 8px 0;
-}
-
 .action-btn {
-    padding: 12px 32px;
+    padding: 11px 0;
     border: none;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
+    text-align: center;
+    margin-top: auto;
 }
 
 .reset-btn {
@@ -301,9 +423,5 @@ html, body {
 
     .slider-value {
         font-size: 22px;
-    }
-
-    .slider-wrap {
-        height: 200px;
     }
 }

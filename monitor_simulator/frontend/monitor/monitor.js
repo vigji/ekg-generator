@@ -1,23 +1,17 @@
 /**
- * monitor.js — WebSocket client and animation loop for the patient monitor.
+ * monitor.js — BroadcastChannel client and animation loop for the patient monitor.
  *
- * Connects to the backend, receives state updates, and drives waveform rendering.
+ * Receives state updates from the controller tab and drives waveform rendering.
  */
 
 (function () {
     'use strict';
 
+    // --- Channel ---
+    const channel = MonitorChannel.create();
+
     // --- State ---
-    let state = {
-        rhythm: 'sinus_rhythm',
-        heart_rate: 72,
-        sync_mode: false,
-        systolic: 120,
-        diastolic: 80,
-        spo2: 98,
-        etco2: 35,
-        respiratory_rate: 14,
-    };
+    let state = channel.loadState();
 
     // --- Waveform renderers ---
     const ecgRenderer = new WaveformRenderer(
@@ -49,7 +43,11 @@
     function updateNumerics() {
         // For lethal rhythms, show dashes
         const noHR = ['ventricular_fibrillation', 'asystole'];
-        if (noHR.includes(state.rhythm)) {
+        if (state.pacing_mode && state.pacing_current >= 60) {
+            // Pacing with capture — show pacing rate
+            hrValue.textContent = state.pacing_rate;
+            spo2Value.textContent = state.spo2;
+        } else if (noHR.includes(state.rhythm)) {
             hrValue.textContent = '---';
             spo2Value.textContent = '---';
         } else {
@@ -71,11 +69,31 @@
         const samplesToGenerate = Math.round(SAMPLE_RATE * dt);
 
         // --- ECG ---
+        const CAPTURE_THRESHOLD = 60; // mA — below this, pacing fails to capture
         while (ecgSamplesRemaining.length < samplesToGenerate) {
             const beatStartIdx = ecgSamplesRemaining.length;
-            const beat = ECGRhythms.generateBeat(
-                state.rhythm, SAMPLE_RATE, state.heart_rate, ecgBeatIndex
-            );
+            let beat;
+
+            if (state.pacing_mode) {
+                const capture = state.pacing_current >= CAPTURE_THRESHOLD;
+                beat = ECGRhythms.generatePacedBeat(
+                    SAMPLE_RATE, state.pacing_rate, state.pacing_current, capture
+                );
+                if (!capture) {
+                    // Failure to capture: overlay underlying rhythm
+                    const underlying = ECGRhythms.generateBeat(
+                        state.rhythm, SAMPLE_RATE, state.heart_rate, ecgBeatIndex
+                    );
+                    // Resample underlying to match paced beat length
+                    for (let i = 0; i < beat.length && i < underlying.length; i++) {
+                        beat[i] += underlying[i];
+                    }
+                }
+            } else {
+                beat = ECGRhythms.generateBeat(
+                    state.rhythm, SAMPLE_RATE, state.heart_rate, ecgBeatIndex
+                );
+            }
             ecgBeatIndex++;
 
             // Find the true R-peak: highest positive sample in this beat
@@ -151,63 +169,45 @@
         generateAndPush(dt);
 
         // Render all waveforms
-        ecgRenderer.render(-0.6, 1.8);
+        // Widen Y range when pacing to fit tall spikes
+        const ecgYMax = state.pacing_mode ? 2.8 : 1.8;
+        ecgRenderer.render(-0.6, ecgYMax);
         spo2Renderer.render(-0.1, 1.2);
         capnoRenderer.render(-0.1, 1.2);
 
         requestAnimationFrame(animate);
     }
 
-    // --- WebSocket connection ---
-    function connectWebSocket() {
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${location.host}/ws/monitor`);
+    // --- Handle state updates from controller ---
+    channel.onState((newState, type) => {
+        if (type === 'state_request') return; // not for us
+        if (!newState) return;
 
-        ws.onopen = () => {
-            console.log('Monitor connected to server');
-        };
+        const oldRhythm = state.rhythm;
+        const oldHR = state.heart_rate;
+        const oldSync = state.sync_mode;
+        const oldPacing = state.pacing_mode;
+        const oldPacingRate = state.pacing_rate;
+        const oldPacingCurrent = state.pacing_current;
+        Object.assign(state, newState);
+        updateNumerics();
 
-        ws.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'state_update') {
-                const oldRhythm = state.rhythm;
-                const oldHR = state.heart_rate;
-                const oldSync = state.sync_mode;
-                Object.assign(state, msg.state);
-                updateNumerics();
+        // Clear SYNC markers when SYNC is turned off
+        if (oldSync && !state.sync_mode) {
+            ecgRenderer.clearSyncMarkers();
+        }
 
-                // Clear SYNC markers when SYNC is turned off
-                if (oldSync && !state.sync_mode) {
-                    ecgRenderer.clearSyncMarkers();
-                }
-
-                // If rhythm or HR changed, flush waveform buffers for immediate response
-                if (state.rhythm !== oldRhythm || state.heart_rate !== oldHR) {
-                    ecgSamplesRemaining = [];
-                    ecgRPeakPositions = [];
-                    plethSamplesRemaining = [];
-                    ecgBeatIndex = 0;
-                }
-            }
-        };
-
-        ws.onclose = () => {
-            console.log('Monitor disconnected, reconnecting in 2s...');
-            setTimeout(connectWebSocket, 2000);
-        };
-
-        ws.onerror = (err) => {
-            console.error('WebSocket error:', err);
-            ws.close();
-        };
-
-        // Keep-alive ping
-        setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'ping' }));
-            }
-        }, 30000);
-    }
+        // If rhythm, HR, or pacing changed, flush waveform buffers
+        const pacingChanged = state.pacing_mode !== oldPacing
+            || state.pacing_rate !== oldPacingRate
+            || state.pacing_current !== oldPacingCurrent;
+        if (state.rhythm !== oldRhythm || state.heart_rate !== oldHR || pacingChanged) {
+            ecgSamplesRemaining = [];
+            ecgRPeakPositions = [];
+            plethSamplesRemaining = [];
+            ecgBeatIndex = 0;
+        }
+    });
 
     // --- Fullscreen on click ---
     document.getElementById('monitor').addEventListener('click', () => {
@@ -218,6 +218,7 @@
 
     // --- Start ---
     updateNumerics();
-    connectWebSocket();
+    channel.requestState();
+    channel.startConnectionMonitor();
     requestAnimationFrame(animate);
 })();

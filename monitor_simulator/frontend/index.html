@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Monitor Simulator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            height: 100%;
+            background: #0a0e1a;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: #e0e0e0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            max-width: 520px;
+            padding: 40px 24px;
+        }
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+        .subtitle {
+            font-size: 15px;
+            color: #8899aa;
+            margin-bottom: 36px;
+            line-height: 1.5;
+        }
+        .links {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-bottom: 36px;
+        }
+        a.btn {
+            display: inline-block;
+            padding: 16px 32px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.15s;
+        }
+        a.btn-controller {
+            background: linear-gradient(135deg, #1565c0, #0d47a1);
+            color: #fff;
+        }
+        a.btn-controller:hover { background: linear-gradient(135deg, #1976d2, #1565c0); }
+        a.btn-monitor {
+            background: #1e2640;
+            border: 2px solid #2a3555;
+            color: #00ff41;
+        }
+        a.btn-monitor:hover { border-color: #00ff41; background: #263050; }
+        .instructions {
+            font-size: 13px;
+            color: #556677;
+            line-height: 1.6;
+            text-align: left;
+        }
+        .instructions strong { color: #8899aa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Patient Monitor Simulator</h1>
+        <p class="subtitle">
+            Real-time ECG, SpO2, and capnography waveform simulator for clinical education.
+        </p>
+        <div class="links">
+            <a href="controller/index.html" class="btn btn-controller" target="_blank">Open Controller</a>
+            <a href="monitor/index.html" class="btn btn-monitor" target="_blank">Open Monitor</a>
+        </div>
+        <div class="instructions">
+            <p><strong>How to use:</strong></p>
+            <p>1. Click <strong>Open Controller</strong> to adjust rhythms and vitals.</p>
+            <p>2. Click <strong>Open Monitor</strong> to display the patient monitor.</p>
+            <p>3. Drag the monitor window to a projector or second screen and go fullscreen (click the monitor).</p>
+            <p style="margin-top: 12px;"><strong>Note:</strong> Both windows must be open on the same device and browser. Changes on the controller appear instantly on the monitor.</p>
+        </div>
+    </div>
+</body>
+</html>

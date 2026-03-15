@@ -25,6 +25,49 @@ const ECGRhythms = {
     },
 
     /**
+     * Generate one paced beat.
+     * @param {number} sampleRate
+     * @param {number} pacingRate - pacing rate in bpm
+     * @param {number} pacingCurrent - current in mA (0-200)
+     * @param {boolean} capture - whether electrical capture is achieved
+     * @returns {Float32Array}
+     */
+    generatePacedBeat(sampleRate, pacingRate, pacingCurrent, capture) {
+        const rr = 60.0 / pacingRate;
+        const n = Math.round(rr * sampleRate);
+        const signal = new Float32Array(n);
+
+        // Pacing spike at ~10% into the beat
+        const spikePos = Math.round(0.10 * n);
+        // Spike height scales with current (0 mA → 0, 200 mA → 2.5)
+        const spikeHeight = (pacingCurrent / 200) * 2.5;
+
+        // Widen spike to 3 samples so it reliably fills at least one pixel column
+        for (let s = 0; s < 3 && spikePos + s < n; s++) {
+            signal[spikePos + s] = spikeHeight;
+        }
+        // Small negative afterpotential (1 sample)
+        if (spikePos + 3 < n) signal[spikePos + 3] = -spikeHeight * 0.15;
+
+        if (capture) {
+            // Gap of ~12 samples (~24ms at 500 Hz) so spike is visually separate from QRS
+            const qrsStart = spikePos + 12;
+            for (let i = 0; i < n; i++) {
+                const t = (i - qrsStart) / sampleRate;
+                if (t > 0) {
+                    // Wide captured QRS complex
+                    signal[i] += 0.75 * Math.exp(-Math.pow((t - 0.02) / 0.025, 2) / 2);
+                    signal[i] += -0.45 * Math.exp(-Math.pow((t - 0.06) / 0.03, 2) / 2);
+                    // Broad T-wave
+                    signal[i] += -0.25 * Math.exp(-Math.pow((t - 0.18) / 0.06, 2) / 2);
+                }
+            }
+        }
+
+        return signal;
+    },
+
+    /**
      * Parametric ECG beat using Gaussian peaks for P, Q, R, S, T waves.
      */
     _normalBeat(sampleRate, heartRate, params = {}) {
@@ -195,20 +238,49 @@ const ECGRhythms = {
         },
 
         'vt_monomorphic': function(sr, hr, idx) {
-            // Wide sinusoidal, deep trough, regular — min rate 140
             const effectiveHR = Math.max(hr, 140);
-            return ECGRhythms._wideBeat(sr, effectiveHR, {
-                qAmp: -0.2,
-                qWidth: 0.03,
-                rAmp: 0.9,
-                rWidth: 0.06,
-                sAmp: -0.7,
-                sPos: 0.44,
-                sWidth: 0.04,
-                tAmp: -0.35,
-                tPos: 0.56,
-                tWidth: 0.06,
-            });
+            const rr = 60.0 / effectiveHR;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            // Seeded pseudo-random per beat
+            const seed = (idx * 2654435761) >>> 0;
+            const rand = (k) => {
+                const x = Math.sin(seed + k * 9973) * 43758.5453;
+                return x - Math.floor(x);
+            };
+
+            // Beat-to-beat variation
+            const ampVar = 0.75 + 0.25 * rand(0);
+            const driftOffset = (rand(2) - 0.5) * 0.15;
+            const spikeVar = 1.6 + 0.4 * rand(3);   // how pointy the troughs are
+
+            // Continuous sinusoid with top-bottom asymmetry:
+            //   - 2nd harmonic widens positive half, narrows negative half
+            //   - power function on negative half sharpens troughs into V-spikes
+            let rawMin = Infinity, rawMax = -Infinity;
+            for (let i = 0; i < n; i++) {
+                const phase = 2 * Math.PI * i / n;
+                // 2nd harmonic creates asymmetry: wide tops, narrow bottoms
+                let v = Math.sin(phase) + 0.30 * Math.sin(2 * phase);
+                // Sharpen negative half into pointy V-troughs
+                if (v < 0) {
+                    v = -Math.pow(-v, spikeVar);
+                }
+                signal[i] = v;
+                if (v < rawMin) rawMin = v;
+                if (v > rawMax) rawMax = v;
+            }
+
+            // Rescale with per-beat amplitude and drift
+            const targetMax = 0.9 * ampVar;
+            const targetMin = -0.7 * ampVar;
+            const scale = (targetMax - targetMin) / (rawMax - rawMin);
+            const offset = targetMax - rawMax * scale + driftOffset;
+            for (let i = 0; i < n; i++) {
+                signal[i] = signal[i] * scale + offset;
+            }
+            return signal;
         },
 
         'vt_polymorphic': function(sr, hr, idx) {
@@ -229,25 +301,54 @@ const ECGRhythms = {
         },
 
         'ventricular_fibrillation': function(sr, hr, idx) {
-            // Chaotic, waxing/waning, FM synthesis, idx-based continuous phase
-            const n = Math.round(sr * 0.5); // 0.5 second chunks
+            // VF as random zigzag segments: sharp angular lines going
+            // up and down irregularly, matching real VF strip morphology
+            const n = Math.round(sr * 0.5);
             const signal = new Float32Array(n);
 
+            // Persistent state
+            if (ECGRhythms._vfCur === undefined) ECGRhythms._vfCur = 0;
+            if (ECGRhythms._vfTgt === undefined) ECGRhythms._vfTgt = 0.5;
+            if (ECGRhythms._vfRemain === undefined) ECGRhythms._vfRemain = 0;
+            if (ECGRhythms._vfDur === undefined) ECGRhythms._vfDur = 1;
+            if (ECGRhythms._vfPrev === undefined) ECGRhythms._vfPrev = 0;
+            if (ECGRhythms._vfSmooth === undefined) ECGRhythms._vfSmooth = 1.0;
+            if (!ECGRhythms._vfT) ECGRhythms._vfT = 0;
+
+            const dt = 1.0 / sr;
+
             for (let i = 0; i < n; i++) {
-                const globalSample = ECGRhythms._vfPhase + i;
-                const t = globalSample / sr;
-                // Amplitude envelope: slow waxing/waning (~0.3 Hz)
-                const envelope = 0.3 + 0.4 * (0.5 + 0.5 * Math.sin(2 * Math.PI * 0.3 * t));
-                // FM synthesis: frequency drifts 3–9 Hz
-                const freqMod = 6 + 3 * Math.sin(2 * Math.PI * 0.2 * t);
-                const phase = 2 * Math.PI * freqMod * t;
-                signal[i] = envelope * (
-                    0.6 * Math.sin(phase) +
-                    0.25 * Math.sin(phase * 1.7 + 0.5) +
-                    0.15 * (Math.random() - 0.5)
-                );
+                const t = ECGRhythms._vfT;
+
+                // Amplitude envelope: wax/wane
+                const env1 = 0.5 + 0.5 * Math.sin(2 * Math.PI * 0.20 * t);
+                const env2 = 0.5 + 0.5 * Math.sin(2 * Math.PI * 0.31 * t + 1.7);
+                const envelope = 0.25 + 0.75 * env1 * env2;
+
+                // When we reach the target, pick a new one
+                if (ECGRhythms._vfRemain <= 0) {
+                    ECGRhythms._vfPrev = ECGRhythms._vfTgt;
+                    // New random target: opposite sign bias with wider amplitude range
+                    const sign = ECGRhythms._vfPrev > 0 ? -1 : 1;
+                    ECGRhythms._vfTgt = sign * (0.1 + Math.random() * 1.0);
+                    // Duration: wider range (8-50 samples) for more beat-to-beat variability
+                    const dur = Math.floor(8 + Math.random() * 42);
+                    ECGRhythms._vfRemain = dur;
+                    ECGRhythms._vfDur = dur;
+                    // Per-segment smoothness: 0.6 (sharper) to 1.8 (rounder)
+                    ECGRhythms._vfSmooth = 0.6 + Math.random() * 1.2;
+                }
+
+                // Variable-smoothness interpolation via power-cosine blend
+                const frac = 1 - (ECGRhythms._vfRemain / ECGRhythms._vfDur);
+                const cosBlend = 0.5 * (1 - Math.cos(Math.PI * frac));
+                const blend = Math.pow(cosBlend, ECGRhythms._vfSmooth);
+                ECGRhythms._vfCur = ECGRhythms._vfPrev + (ECGRhythms._vfTgt - ECGRhythms._vfPrev) * blend;
+                ECGRhythms._vfRemain--;
+
+                signal[i] = envelope * ECGRhythms._vfCur;
+                ECGRhythms._vfT += dt;
             }
-            ECGRhythms._vfPhase += n;
             return signal;
         },
 
@@ -595,26 +696,40 @@ class WaveformRenderer {
         // Convert sample rate to pixel rate
         const samplesPerPixel = sampleRate / this.sweepSpeed;
 
+        let lastPixel = -1;
         for (let i = 0; i < samples.length; i++) {
             const pixelPos = Math.floor(i / samplesPerPixel);
             const bufIdx = (this.writePos + pixelPos) % this.buffer.length;
-            this.buffer[bufIdx] = samples[i];
+            if (pixelPos !== lastPixel) {
+                // First sample in a new pixel column — initialize
+                this.buffer[bufIdx] = samples[i];
+                lastPixel = pixelPos;
+            } else {
+                // Same pixel column — keep the sample with greater absolute value (peak-hold)
+                if (Math.abs(samples[i]) > Math.abs(this.buffer[bufIdx])) {
+                    this.buffer[bufIdx] = samples[i];
+                }
+            }
         }
 
-        // Add sync markers
+        // Remove stale sync markers at pixel positions being overwritten
+        const totalPixels = Math.floor(samples.length / samplesPerPixel);
+        if (this.syncMarkers.length > 0) {
+            this.syncMarkers = this.syncMarkers.filter(pos => {
+                const dist = (pos - this.writePos + this.buffer.length) % this.buffer.length;
+                return dist >= totalPixels;
+            });
+        }
+
+        // Add sync markers (after eviction so new markers aren't immediately removed)
         if (opts.syncMarkerAt) {
             for (const frac of opts.syncMarkerAt) {
                 const pixelPos = Math.floor((frac * samples.length) / samplesPerPixel);
                 const bufIdx = (this.writePos + pixelPos) % this.buffer.length;
                 this.syncMarkers.push(bufIdx);
             }
-            // Keep only recent markers
-            if (this.syncMarkers.length > 50) {
-                this.syncMarkers = this.syncMarkers.slice(-30);
-            }
         }
 
-        const totalPixels = Math.floor(samples.length / samplesPerPixel);
         this.writePos = (this.writePos + totalPixels) % this.buffer.length;
     }
 

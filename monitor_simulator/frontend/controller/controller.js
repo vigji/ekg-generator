@@ -1,46 +1,66 @@
 /**
  * controller.js — Controller UI logic.
  *
- * Connects to the backend via WebSocket, sends parameter updates,
- * and keeps the UI in sync with the current monitor state.
+ * Communicates with the monitor via BroadcastChannel (cross-tab, same device).
+ * All state is persisted to localStorage for resilience across refreshes.
  */
 
 (function () {
     'use strict';
 
-    // --- Rhythm definitions (with abbreviations for the grid) ---
+    // --- Rhythm definitions (with abbreviations and default HR for auto-set) ---
     const RHYTHMS = [
-        { id: 'sinus_rhythm',              abbr: 'NSR',  label: 'Sinus Rhythm' },
-        { id: 'sinus_tachycardia',         abbr: 'ST',   label: 'Sinus Tach' },
-        { id: 'atrial_fibrillation',       abbr: 'AFIB', label: 'A-Fib' },
-        { id: 'atrial_flutter',            abbr: 'AFL',  label: 'A-Flutter' },
-        { id: 'atrial_tachycardia',        abbr: 'AT',   label: 'Atrial Tach' },
-        { id: 'psvt',                      abbr: 'PSVT', label: 'PSVT' },
-        { id: 'junctional',               abbr: 'JR',   label: 'Junctional' },
-        { id: 'av_block_1',               abbr: '1HB',  label: 'AV Block I' },
-        { id: 'av_block_2_mobitz1',       abbr: 'M1',   label: 'Mobitz I' },
-        { id: 'av_block_2_mobitz2',       abbr: 'M2',   label: 'Mobitz II' },
-        { id: 'av_block_3',               abbr: '3HB',  label: 'AV Block III' },
-        { id: 'vt_monomorphic',           abbr: 'VT',   label: 'V-Tach Mono' },
-        { id: 'vt_polymorphic',           abbr: 'PVT',  label: 'V-Tach Poly' },
-        { id: 'ventricular_fibrillation', abbr: 'VF',   label: 'V-Fib' },
-        { id: 'pacemaker',               abbr: 'PAC',  label: 'Pacemaker' },
-        { id: 'agonal',                   abbr: 'AG',   label: 'Agonal' },
-        { id: 'asystole',                abbr: 'ASY',  label: 'Asystole' },
-        { id: 'stemi',                    abbr: 'STEMI', label: 'STEMI' },
-        { id: 'wellens',                  abbr: 'WLN',  label: 'Wellens' },
-        { id: 'de_winter',               abbr: 'DW',   label: 'De Winter' },
-        { id: 'tca_toxicity',            abbr: 'TCA',  label: 'TCA Toxicity' },
+        { id: 'sinus_rhythm',              abbr: 'NSR',  label: 'Sinus Rhythm',    hrDefault: 72 },
+        { id: 'sinus_tachycardia',         abbr: 'ST',   label: 'Sinus Tach',      hrDefault: 100 },
+        { id: 'atrial_fibrillation',       abbr: 'AFIB', label: 'A-Fib',           hrDefault: 80 },
+        { id: 'atrial_flutter',            abbr: 'AFL',  label: 'A-Flutter',       hrDefault: 100 },
+        { id: 'atrial_tachycardia',        abbr: 'AT',   label: 'Atrial Tach',     hrDefault: 120 },
+        { id: 'psvt',                      abbr: 'PSVT', label: 'PSVT',            hrDefault: 150 },
+        { id: 'junctional',               abbr: 'JR',   label: 'Junctional',      hrDefault: 45 },
+        { id: 'av_block_1',               abbr: '1HB',  label: 'AV Block I',      hrDefault: 72 },
+        { id: 'av_block_2_mobitz1',       abbr: 'M1',   label: 'Mobitz I',        hrDefault: 55 },
+        { id: 'av_block_2_mobitz2',       abbr: 'M2',   label: 'Mobitz II',       hrDefault: 55 },
+        { id: 'av_block_3',               abbr: '3HB',  label: 'AV Block III',    hrDefault: 35 },
+        { id: 'vt_monomorphic',           abbr: 'VT',   label: 'V-Tach Mono',     hrDefault: 200 },
+        { id: 'vt_polymorphic',           abbr: 'PVT',  label: 'V-Tach Poly',     hrDefault: 180 },
+        { id: 'ventricular_fibrillation', abbr: 'VF',   label: 'V-Fib',           hrDefault: 72 },
+        { id: 'pacemaker',               abbr: 'PAC',  label: 'Pacemaker',       hrDefault: 70 },
+        { id: 'agonal',                   abbr: 'AG',   label: 'Agonal',          hrDefault: 20 },
+        { id: 'asystole',                abbr: 'ASY',  label: 'Asystole',        hrDefault: 72 },
+        { id: 'stemi',                    abbr: 'STEMI', label: 'STEMI',          hrDefault: 72 },
+        { id: 'wellens',                  abbr: 'WLN',  label: 'Wellens',         hrDefault: 72 },
+        { id: 'de_winter',               abbr: 'DW',   label: 'De Winter',       hrDefault: 72 },
+        { id: 'tca_toxicity',            abbr: 'TCA',  label: 'TCA Toxicity',    hrDefault: 110 },
     ];
 
-    // --- State ---
-    let currentState = {};
-    let ws = null;
+    // --- Scale tick configs for each slider ---
+    const SCALE_CONFIGS = {
+        heart_rate: { min: 20,  max: 250, ticks: [20, 50, 100, 150, 200, 250] },
+        systolic:   { min: 30,  max: 300, ticks: [30, 100, 150, 200, 250, 300] },
+        diastolic:  { min: 10,  max: 200, ticks: [10, 50, 100, 150, 200] },
+        spo2:       { min: 50,  max: 100, ticks: [50, 60, 70, 80, 90, 100] },
+        etco2:      { min: 0,   max: 80,  ticks: [0, 20, 40, 60, 80] },
+    };
+
+    function getHRDefault(rhythmId) {
+        const r = RHYTHMS.find(r => r.id === rhythmId);
+        return r ? r.hrDefault : 72;
+    }
+
+    // --- Channel ---
+    const channel = MonitorChannel.create();
+    let currentState = channel.loadState();
 
     // --- DOM refs ---
     const connStatus = document.getElementById('conn-status');
     const rhythmGrid = document.getElementById('rhythm-grid');
     const syncBtn = document.getElementById('sync-btn');
+    const pacingBtn = document.getElementById('pacing-btn');
+    const pacingControls = document.getElementById('pacing-controls');
+    const pacingRateSlider = document.getElementById('pacing-rate-slider');
+    const pacingRateDisplay = document.getElementById('pacing-rate-display');
+    const pacingCurrentSlider = document.getElementById('pacing-current-slider');
+    const pacingCurrentDisplay = document.getElementById('pacing-current-display');
     const resetBtn = document.getElementById('reset-btn');
 
     const sliders = {
@@ -65,7 +85,7 @@
     }
 
     function selectRhythm(rhythmId) {
-        sendUpdate({ rhythm: rhythmId });
+        sendUpdate({ rhythm: rhythmId, heart_rate: getHRDefault(rhythmId) });
     }
 
     function updateRhythmHighlight(rhythmId) {
@@ -74,14 +94,39 @@
         });
     }
 
+    // --- Scale DOM refs ---
+    const scaleEls = {
+        heart_rate: document.getElementById('hr-scale'),
+        systolic:   document.getElementById('sys-scale'),
+        diastolic:  document.getElementById('dia-scale'),
+        spo2:       document.getElementById('spo2-scale'),
+        etco2:      document.getElementById('etco2-scale'),
+    };
+
     // --- Slider event handlers ---
     function setupSliders() {
         for (const [key, { slider, display }] of Object.entries(sliders)) {
-            // Debounced input — send on every change for real-time response
             slider.addEventListener('input', () => {
                 const val = parseInt(slider.value);
                 display.textContent = val;
                 sendUpdate({ [key]: val });
+            });
+        }
+    }
+
+    function buildScales() {
+        for (const [key, cfg] of Object.entries(SCALE_CONFIGS)) {
+            const el = scaleEls[key];
+            if (!el) continue;
+            el.innerHTML = '';
+            const range = cfg.max - cfg.min;
+            cfg.ticks.forEach(tick => {
+                const pct = ((tick - cfg.min) / range) * 100;
+                const div = document.createElement('div');
+                div.className = 'scale-tick';
+                div.style.bottom = pct + '%';
+                div.textContent = tick;
+                el.appendChild(div);
             });
         }
     }
@@ -104,6 +149,37 @@
         syncBtn.classList.toggle('active', active);
     }
 
+    // --- PACING toggle ---
+    pacingBtn.addEventListener('click', () => {
+        sendUpdate({ pacing_mode: !currentState.pacing_mode });
+    });
+
+    pacingRateSlider.addEventListener('input', () => {
+        const val = parseInt(pacingRateSlider.value);
+        pacingRateDisplay.textContent = val;
+        sendUpdate({ pacing_rate: val });
+    });
+
+    pacingCurrentSlider.addEventListener('input', () => {
+        const val = parseInt(pacingCurrentSlider.value);
+        pacingCurrentDisplay.textContent = val;
+        sendUpdate({ pacing_current: val });
+    });
+
+    function updatePacingUI(state) {
+        const active = state.pacing_mode;
+        pacingBtn.classList.toggle('active', active);
+        pacingControls.style.display = active ? 'flex' : 'none';
+        if (state.pacing_rate !== undefined) {
+            pacingRateSlider.value = state.pacing_rate;
+            pacingRateDisplay.textContent = state.pacing_rate;
+        }
+        if (state.pacing_current !== undefined) {
+            pacingCurrentSlider.value = state.pacing_current;
+            pacingCurrentDisplay.textContent = state.pacing_current;
+        }
+    }
+
     // --- Reset ---
     resetBtn.addEventListener('click', () => {
         sendUpdate({
@@ -115,17 +191,17 @@
             etco2: 35,
             sync_mode: false,
             respiratory_rate: 14,
+            pacing_mode: false,
+            pacing_rate: 70,
+            pacing_current: 70,
         });
     });
 
-    // --- WebSocket ---
+    // --- Communication ---
     function sendUpdate(partialState) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-                type: 'update',
-                state: partialState,
-            }));
-        }
+        Object.assign(currentState, partialState);
+        applyState(currentState);
+        channel.postState(currentState);
     }
 
     function applyState(state) {
@@ -133,37 +209,24 @@
         updateRhythmHighlight(state.rhythm);
         updateSlidersFromState(state);
         updateSyncButton(state.sync_mode);
+        updatePacingUI(state);
     }
 
-    function connectWebSocket() {
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        ws = new WebSocket(`${protocol}//${location.host}/ws/controller`);
+    // Respond to state requests from monitors
+    channel.onState((state, type) => {
+        if (type === 'state_request') {
+            channel.postState(currentState);
+        }
+    });
 
-        ws.onopen = () => {
-            connStatus.textContent = 'Connected';
-            connStatus.classList.add('connected');
-        };
-
-        ws.onmessage = (event) => {
-            const msg = JSON.parse(event.data);
-            if (msg.type === 'state_update' && msg.state) {
-                applyState(msg.state);
-            }
-        };
-
-        ws.onclose = () => {
-            connStatus.textContent = 'Disconnected';
-            connStatus.classList.remove('connected');
-            setTimeout(connectWebSocket, 2000);
-        };
-
-        ws.onerror = () => {
-            ws.close();
-        };
-    }
+    // Show connection status (controller is always "connected" since it is the source)
+    connStatus.textContent = 'Connected';
+    connStatus.classList.add('connected');
 
     // --- Init ---
     buildRhythmGrid();
     setupSliders();
-    connectWebSocket();
+    buildScales();
+    applyState(currentState);
+    channel.startHeartbeat();
 })();
