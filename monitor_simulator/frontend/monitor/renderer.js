@@ -284,20 +284,74 @@ const ECGRhythms = {
         },
 
         'vt_polymorphic': function(sr, hr, idx) {
-            // Torsades — axis rotation flips polarity, spindle amplitude
-            const effectiveHR = Math.max(hr, 180);
-            const polarity = Math.sin(idx * 0.25); // flips over ~25 beats
-            const envelope = 0.4 + 0.6 * Math.abs(Math.sin(idx * 0.12)); // spindle wax/wane
-            return ECGRhythms._wideBeat(sr, effectiveHR, {
-                qAmp: -0.15 * polarity * envelope,
-                qWidth: 0.03,
-                rAmp: 0.9 * polarity * envelope,
-                rWidth: 0.06,
-                sAmp: -0.5 * polarity * envelope,
-                sWidth: 0.04,
-                tAmp: -0.3 * polarity * envelope,
-                tWidth: 0.06,
-            });
+            // Torsades de Pointes — continuous sinusoidal with spindle envelope,
+            // slightly triangular/concave shape, and sparse double peaks
+            const effectiveHR = Math.max(hr, 250);
+            const n = Math.round(sr * 0.5); // 0.5s chunks for continuity
+            const signal = new Float32Array(n);
+
+            // Persistent state for seamless cross-chunk continuity
+            if (ECGRhythms._pvtPhase === undefined) ECGRhythms._pvtPhase = 0;
+            if (ECGRhythms._pvtT === undefined) ECGRhythms._pvtT = 0;
+            // Smoothed random walk envelope state
+            if (ECGRhythms._pvtEnv === undefined) ECGRhythms._pvtEnv = 0.8;
+            if (ECGRhythms._pvtEnvTgt === undefined) ECGRhythms._pvtEnvTgt = 0.7;
+            if (ECGRhythms._pvtEnvRemain === undefined) ECGRhythms._pvtEnvRemain = 0;
+
+            const baseFreq = effectiveHR / 60; // oscillation frequency in Hz
+            const dt = 1.0 / sr;
+
+            for (let i = 0; i < n; i++) {
+                const t = ECGRhythms._pvtT;
+
+                // Stochastic envelope: smoothed random walk
+                if (ECGRhythms._pvtEnvRemain <= 0) {
+                    ECGRhythms._pvtEnvPrev = ECGRhythms._pvtEnv;
+                    // New random target between 0.45 and 1.0
+                    ECGRhythms._pvtEnvTgt = 0.45 + Math.random() * 0.55;
+                    // Random duration: 80-300 samples (~0.16-0.6s at 500Hz)
+                    const dur = Math.floor(80 + Math.random() * 220);
+                    ECGRhythms._pvtEnvRemain = dur;
+                    ECGRhythms._pvtEnvDur = dur;
+                }
+                const envFrac = 1 - (ECGRhythms._pvtEnvRemain / ECGRhythms._pvtEnvDur);
+                const envBlend = 0.5 * (1 - Math.cos(Math.PI * envFrac));
+                ECGRhythms._pvtEnv = ECGRhythms._pvtEnvPrev + (ECGRhythms._pvtEnvTgt - ECGRhythms._pvtEnvPrev) * envBlend;
+                ECGRhythms._pvtEnvRemain--;
+                const envelope = ECGRhythms._pvtEnv;
+
+                // Slowly drifting frequency for organic feel
+                const freqDrift = baseFreq + 0.4 * Math.sin(2 * Math.PI * 0.08 * t);
+                ECGRhythms._pvtPhase += 2 * Math.PI * freqDrift * dt;
+
+                // Triangle wave — pure linear ramps, pointy peaks
+                const normPhase = ((ECGRhythms._pvtPhase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+                const tri = normPhase < Math.PI
+                    ? -1 + 2 * (normPhase / Math.PI)
+                    : 1 - 2 * ((normPhase - Math.PI) / Math.PI);
+                // Very slight tip rounding only: power just barely below 1
+                let shaped = Math.sign(tri) * Math.pow(Math.abs(tri), 0.93);
+
+                // Sparse double peaks right at the apex (~12% of cycles)
+                const notchMod = Math.sin(2 * Math.PI * 0.37 * t + 0.9);
+                if (notchMod > 0.75) {
+                    // Narrow notch right at peak (phase ≈ 0 for top, π for bottom)
+                    const distFromTop = Math.abs(normPhase);
+                    const distFromTopWrap = Math.min(distFromTop, 2 * Math.PI - distFromTop);
+                    const distFromBot = Math.abs(normPhase - Math.PI);
+                    const nearTop = Math.exp(-Math.pow(distFromTopWrap / 0.10, 2));
+                    const nearBot = Math.exp(-Math.pow(distFromBot / 0.10, 2));
+                    shaped -= 0.20 * nearTop;
+                    shaped += 0.20 * nearBot;
+                }
+
+                // Axis rotation: slow polarity drift (Torsades characteristic)
+                const axisRotation = Math.sin(2 * Math.PI * 0.12 * t);
+
+                signal[i] = envelope * shaped * (0.6 + 0.4 * axisRotation) * 1.5;
+                ECGRhythms._pvtT += dt;
+            }
+            return signal;
         },
 
         'ventricular_fibrillation': function(sr, hr, idx) {
