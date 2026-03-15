@@ -284,73 +284,112 @@ const ECGRhythms = {
         },
 
         'vt_polymorphic': function(sr, hr, idx) {
-            // Torsades de Pointes — continuous sinusoidal with spindle envelope,
-            // slightly triangular/concave shape, and sparse double peaks
-            const effectiveHR = Math.max(hr, 250);
-            const n = Math.round(sr * 0.5); // 0.5s chunks for continuity
+            // Torsades de Pointes — stochastic piecewise cycle generator
+            // with AR(1) parameter evolution and soft peak rounding
+            const n = Math.round(sr * 0.5);
             const signal = new Float32Array(n);
-
-            // Persistent state for seamless cross-chunk continuity
-            if (ECGRhythms._pvtPhase === undefined) ECGRhythms._pvtPhase = 0;
-            if (ECGRhythms._pvtT === undefined) ECGRhythms._pvtT = 0;
-            // Smoothed random walk envelope state
-            if (ECGRhythms._pvtEnv === undefined) ECGRhythms._pvtEnv = 0.8;
-            if (ECGRhythms._pvtEnvTgt === undefined) ECGRhythms._pvtEnvTgt = 0.7;
-            if (ECGRhythms._pvtEnvRemain === undefined) ECGRhythms._pvtEnvRemain = 0;
-
-            const baseFreq = effectiveHR / 60; // oscillation frequency in Hz
             const dt = 1.0 / sr;
 
-            for (let i = 0; i < n; i++) {
-                const t = ECGRhythms._pvtT;
+            // Persistent state — initialize on first call
+            const s = ECGRhythms._pvt || (ECGRhythms._pvt = {
+                t: 0,                  // global time
+                cyclePhase: 0,         // phase within current cycle [0,1)
+                // AR(1) cycle parameters
+                P: 0.40,               // period (seconds)
+                A: 1.00,               // amplitude
+                r: 0.22,               // rise fraction
+                q: 0.78,               // decay exponent
+                bump: 0.18,            // late-bump amplitude
+                bpos: 0.84,            // late-bump position
+                off: 0.0,              // vertical offset
+                wig: 0.0,              // wiggle parameter
+                needNewCycle: true,
+            });
 
-                // Stochastic envelope: smoothed random walk
-                if (ECGRhythms._pvtEnvRemain <= 0) {
-                    ECGRhythms._pvtEnvPrev = ECGRhythms._pvtEnv;
-                    // New random target between 0.45 and 1.0
-                    ECGRhythms._pvtEnvTgt = 0.45 + Math.random() * 0.55;
-                    // Random duration: 80-300 samples (~0.16-0.6s at 500Hz)
-                    const dur = Math.floor(80 + Math.random() * 220);
-                    ECGRhythms._pvtEnvRemain = dur;
-                    ECGRhythms._pvtEnvDur = dur;
+            // Box-Muller normal random
+            function randn() {
+                const u1 = Math.random() || 1e-10;
+                const u2 = Math.random();
+                return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
+            }
+
+            function clip(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+            // Asymmetric cycle template: piecewise power-law rise/fall
+            function asymCycle(u, r, p, q, bumpAmp, bumpPos, bumpW, wig) {
+                let y;
+                if (u < r) {
+                    y = -1.0 + 2.0 * Math.pow(u / r, p);
+                } else {
+                    y = 1.0 - 2.0 * Math.pow((u - r) / (1.0 - r), q);
                 }
-                const envFrac = 1 - (ECGRhythms._pvtEnvRemain / ECGRhythms._pvtEnvDur);
-                const envBlend = 0.5 * (1 - Math.cos(Math.PI * envFrac));
-                ECGRhythms._pvtEnv = ECGRhythms._pvtEnvPrev + (ECGRhythms._pvtEnvTgt - ECGRhythms._pvtEnvPrev) * envBlend;
-                ECGRhythms._pvtEnvRemain--;
-                const envelope = ECGRhythms._pvtEnv;
+                // Late positive bump
+                y += bumpAmp * Math.exp(-0.5 * Math.pow((u - bumpPos) / bumpW, 2));
+                // Small early bump
+                y += 0.05 * Math.exp(-0.5 * Math.pow((u - 0.08) / 0.03, 2));
+                // Tiny sinusoidal wiggle
+                y += 0.04 * Math.sin(2 * Math.PI * (3.0 * u + wig));
+                return y;
+            }
 
-                // Slowly drifting frequency for organic feel
-                const freqDrift = baseFreq + 0.4 * Math.sin(2 * Math.PI * 0.08 * t);
-                ECGRhythms._pvtPhase += 2 * Math.PI * freqDrift * dt;
+            for (let i = 0; i < n; i++) {
+                // Generate new cycle parameters via AR(1) at cycle boundary
+                if (s.needNewCycle) {
+                    s.needNewCycle = false;
+                    const xi1 = randn(), xi2 = randn(), xi3 = randn();
+                    const xi4 = randn(), xi5 = randn(), xi6 = randn();
 
-                // Triangle wave — pure linear ramps, pointy peaks
-                const normPhase = ((ECGRhythms._pvtPhase % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-                const tri = normPhase < Math.PI
-                    ? -1 + 2 * (normPhase / Math.PI)
-                    : 1 - 2 * ((normPhase - Math.PI) / Math.PI);
-                // Very slight tip rounding only: power just barely below 1
-                let shaped = Math.sign(tri) * Math.pow(Math.abs(tri), 0.93);
+                    // Period and amplitude: AR(1) with stochastic targets
+                    const Pmean = 0.18, sigP = 0.04;
+                    const Amean = 0.95, sigA = 0.25;
+                    s.P = clip(0.55 * s.P + 0.45 * (Pmean + sigP * xi1), 0.12, 0.32);
+                    s.A = clip(0.45 * s.A + 0.55 * (Amean + sigA * xi2), 0.35, 1.35);
 
-                // Sparse double peaks right at the apex (~12% of cycles)
-                const notchMod = Math.sin(2 * Math.PI * 0.37 * t + 0.9);
-                if (notchMod > 0.75) {
-                    // Narrow notch right at peak (phase ≈ 0 for top, π for bottom)
-                    const distFromTop = Math.abs(normPhase);
-                    const distFromTopWrap = Math.min(distFromTop, 2 * Math.PI - distFromTop);
-                    const distFromBot = Math.abs(normPhase - Math.PI);
-                    const nearTop = Math.exp(-Math.pow(distFromTopWrap / 0.10, 2));
-                    const nearBot = Math.exp(-Math.pow(distFromBot / 0.10, 2));
-                    shaped -= 0.20 * nearTop;
-                    shaped += 0.20 * nearBot;
+                    // Shape parameters
+                    s.r = clip(0.55 * s.r + 0.45 * (0.22 + 0.045 * xi3 + 0.025 * Math.sin(0.9 * s.t)), 0.12, 0.34);
+                    s.q = clip(0.55 * s.q + 0.45 * (0.80 + 0.20 * xi4), 0.45, 1.15);
+                    s.bump = clip(0.50 * s.bump + 0.50 * (0.18 + 0.12 * xi5), 0.01, 0.38);
+                    s.bpos = clip(0.65 * s.bpos + 0.35 * (0.84 + 0.05 * xi6), 0.72, 0.92);
+                    s.off = 0.45 * s.off + 0.55 * (0.07 * randn());
+                    s.wig = randn();
+                }
+
+                // Advance phase within cycle
+                const phaseStep = dt / s.P;
+                s.cyclePhase += phaseStep;
+
+                // Cycle boundary
+                if (s.cyclePhase >= 1.0) {
+                    s.cyclePhase -= 1.0;
+                    s.needNewCycle = true;
+                }
+
+                const u = s.cyclePhase;
+
+                // Compute cycle waveform
+                const y = asymCycle(u, s.r, 0.55, s.q, s.bump, s.bpos, 0.04, s.wig * 0.18);
+
+                // Soft peak rounding: stronger compression for high-amplitude waves
+                let v = s.off + s.A * y;
+                if (v > 0.55) {
+                    v = v - 0.35 * (v - 0.55) * (v - 0.55);
+                }
+                if (v < -0.55) {
+                    v = v + 0.35 * (v + 0.55) * (v + 0.55);
                 }
 
                 // Axis rotation: slow polarity drift (Torsades characteristic)
-                const axisRotation = Math.sin(2 * Math.PI * 0.12 * t);
+                const axisRotation = Math.sin(2 * Math.PI * 0.12 * s.t);
+                signal[i] = (v + 0.20) * (0.6 + 0.4 * axisRotation) * 1.2;
 
-                signal[i] = envelope * shaped * (0.6 + 0.4 * axisRotation) * 1.5;
-                ECGRhythms._pvtT += dt;
+                s.t += dt;
             }
+
+            // Simple 3-sample moving average for minimal smoothing
+            for (let i = 1; i < n - 1; i++) {
+                signal[i] = 0.2 * signal[i - 1] + 0.6 * signal[i] + 0.2 * signal[i + 1];
+            }
+
             return signal;
         },
 
