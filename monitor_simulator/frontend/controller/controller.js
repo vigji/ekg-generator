@@ -28,7 +28,7 @@
         { id: 'pacemaker',               abbr: 'PAC',  label: 'Pacemaker',       hrDefault: 70 },
         { id: 'agonal',                   abbr: 'AG',   label: 'Agonal',          hrDefault: 20 },
         { id: 'asystole',                abbr: 'ASY',  label: 'Asystole',        hrDefault: 72 },
-        { id: 'stemi',                    abbr: 'STEMI', label: 'STEMI',          hrDefault: 72 },
+        { id: 'stemi',                    abbr: 'STEMI', label: 'Inferior STEMI', hrDefault: 72 },
         { id: 'tca_toxicity',            abbr: 'TCA',  label: 'TCA Toxicity',    hrDefault: 110 },
         { id: 'wpw',                     abbr: 'WPW',  label: 'WPW',             hrDefault: 72 },
         { id: 'af_wpw',                  abbr: 'FAWPW', label: 'FA-WPW',         hrDefault: 180 },

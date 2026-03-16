@@ -605,12 +605,50 @@ const ECGRhythms = {
         },
 
         'stemi': function(sr, hr, idx) {
-            // ST elevation merging into broad elevated T-wave
-            return ECGRhythms._normalBeat(sr, hr, {
-                stElev: 0.15,
-                tAmp: 0.5,
-                tWidth: 0.08,
-            });
+            // STEMI: sharp R wave, then elevated concave-upward ST segment
+            // starting directly from R, smoothly into broad rounded T wave.
+            const rr = 60.0 / hr;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            for (let i = 0; i < n; i++) {
+                const t = i / sr / rr; // normalized 0..1
+                let v = 0;
+
+                // P wave
+                v += 0.12 * Math.exp(-Math.pow((t - 0.18) / 0.035, 2) / 2);
+
+                // R wave: sharp, tall — no Q or S wave
+                v += 1.00 * Math.exp(-Math.pow((t - 0.32) / 0.016, 2) / 2);
+
+                // ST-T segment: starts directly from descending limb of R,
+                // elevated and concave-upward, merging into broad rounded T.
+                // R descends to ~0.20 (elevated, not back to baseline),
+                // then curves upward into rounded T peak at ~0.55.
+                const stStart = 0.35;  // where R descent hands off to ST
+                const tPeak = 0.56;   // T wave peak
+                const tEnd = 0.72;    // T wave return to baseline
+                const stBase = 0.20;  // ST elevation level
+                const tHeight = 0.50; // T wave peak height
+
+                if (t > stStart && t <= tPeak) {
+                    const phase = (t - stStart) / (tPeak - stStart);
+                    // Concave upward: starts at stBase, accelerates into tHeight
+                    v += stBase + (tHeight - stBase) * phase * phase;
+                } else if (t > tPeak && t <= tEnd) {
+                    // Broad rounded T descent using cosine for smooth rounded peak
+                    const phase = (t - tPeak) / (tEnd - tPeak);
+                    v += tHeight * 0.5 * (1 + Math.cos(Math.PI * phase));
+                }
+
+                signal[i] = v;
+            }
+
+            // Tiny noise
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.003 * (Math.random() - 0.5);
+            }
+            return signal;
         },
 
         'wellens': function(sr, hr, idx) {
