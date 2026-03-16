@@ -86,6 +86,87 @@ def generate_sinusoidal(
     return wave
 
 
+def generate_aflutter(
+    duration: float,
+    sampling_rate: int = 500,
+    flutter_rate: float = 300.0,
+    flutter_amplitude: float = 0.16,
+    qrs_amplitude: float = 1.0,
+    beat_times: np.ndarray | None = None,
+    rng: np.random.Generator | None = None,
+) -> np.ndarray:
+    """Generate atrial flutter: continuous flutter waves + narrow QRS complexes.
+
+    Builds the signal from scratch rather than layering on ECGSYN, producing
+    clean morphology that matches real atrial flutter strips.
+
+    Parameters
+    ----------
+    flutter_rate : float
+        Atrial flutter rate in bpm (typically 300).
+    flutter_amplitude : float
+        Amplitude of flutter waves relative to QRS.
+    qrs_amplitude : float
+        Peak amplitude of QRS complexes.
+    beat_times : np.ndarray
+        Scheduled ventricular beat times in seconds.
+    """
+    if rng is None:
+        rng = np.random.default_rng()
+
+    n_samples = int(duration * sampling_rate)
+    t = np.arange(n_samples) / sampling_rate
+    freq = flutter_rate / 60.0  # Hz
+
+    # Continuous flutter waves: asymmetric rounded sawtooth
+    # Gradual negative descent, sharper positive upstroke (typical lead II flutter)
+    phase = 2 * np.pi * freq * t
+    flutter = (
+        -np.sin(phase)
+        + 0.40 * np.sin(2 * phase)
+        - 0.18 * np.sin(3 * phase)
+        + 0.08 * np.sin(4 * phase)
+    )
+    flutter = flutter / np.max(np.abs(flutter)) * flutter_amplitude
+
+    signal = flutter.copy()
+
+    # Insert QRS complexes at beat times
+    if beat_times is not None:
+        for beat_idx, bt in enumerate(beat_times):
+            center = int(bt * sampling_rate)
+            if center < 0 or center >= n_samples:
+                continue
+
+            # Subtle beat-to-beat variation for realism
+            r_var = 1.0 + rng.normal(0, 0.03)
+            s_var = 1.0 + rng.normal(0, 0.05)
+
+            r_width = int(0.025 * sampling_rate)
+
+            for i in range(max(0, center - 4 * r_width),
+                           min(n_samples, center + 4 * r_width)):
+                dt = (i - center) / sampling_rate
+
+                # R wave: tall narrow positive peak
+                r = qrs_amplitude * r_var * np.exp(-0.5 * (dt / 0.012) ** 2)
+                # Q wave: small negative dip before R
+                q = -0.10 * qrs_amplitude * np.exp(-0.5 * ((dt + 0.022) / 0.008) ** 2)
+                # S wave: negative dip after R
+                s = -0.30 * qrs_amplitude * s_var * np.exp(-0.5 * ((dt - 0.028) / 0.014) ** 2)
+
+                qrs_val = r + q + s
+
+                # Blend: suppress flutter during QRS, replace with QRS morphology
+                qrs_envelope = np.exp(-0.5 * (dt / 0.035) ** 2)
+                signal[i] = signal[i] * (1.0 - qrs_envelope) + qrs_val
+
+    # Add tiny noise for realism
+    signal += rng.normal(0, 0.005, n_samples)
+
+    return signal
+
+
 def generate_flatline(
     duration: float,
     sampling_rate: int = 500,
