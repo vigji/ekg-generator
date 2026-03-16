@@ -455,6 +455,15 @@ const ECGRhythms = {
             return signal;
         },
 
+        'standby': function(sr, hr, idx) {
+            const n = Math.round(sr * 1.5);
+            const signal = new Float32Array(n);
+            for (let i = 0; i < n; i++) {
+                signal[i] = 0.005 * (Math.random() - 0.5);
+            }
+            return signal;
+        },
+
         'asystole': function(sr, hr, idx) {
             const n = Math.round(sr * 1.5);
             const signal = new Float32Array(n);
@@ -657,7 +666,7 @@ const ECGRhythms = {
      * Returns true if the rhythm supports SYNC markers (has identifiable R waves).
      */
     supportsSyncMarker(rhythm) {
-        const noSync = ['ventricular_fibrillation', 'asystole', 'vt_polymorphic'];
+        const noSync = ['standby', 'ventricular_fibrillation', 'asystole'];
         return !noSync.includes(rhythm);
     },
 

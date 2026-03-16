@@ -14,7 +14,7 @@
     // Start with "just powered on" defaults — flat traces, no values
     // Real values come only when the controller connects and sends state.
     let state = {
-        rhythm: 'asystole',
+        rhythm: 'standby',
         heart_rate: 0,
         systolic: 0,
         diastolic: 0,
@@ -55,7 +55,16 @@
 
     // --- Update numeric displays ---
     function updateNumerics() {
-        // For lethal rhythms or "just powered on" (values=0), show dashes
+        // Standby: all zeros
+        if (state.rhythm === 'standby') {
+            hrValue.textContent = '0';
+            spo2Value.textContent = '0';
+            etco2Value.textContent = '0';
+            bpSys.textContent = '0';
+            bpDia.textContent = '0';
+            return;
+        }
+        // For lethal rhythms show dashes for HR/SpO2
         const noHR = ['ventricular_fibrillation', 'asystole'];
         if (state.pacing_mode && state.pacing_current >= 60) {
             hrValue.textContent = state.pacing_rate;
@@ -109,14 +118,30 @@
             }
             ecgBeatIndex++;
 
-            // Find the true R-peak: highest positive sample in this beat
-            let maxVal = -Infinity, maxIdx = 0;
-            for (let i = 0; i < beat.length; i++) {
-                if (beat[i] > maxVal) { maxVal = beat[i]; maxIdx = i; }
-            }
-            // Only mark R-peak if there's a meaningful positive deflection
-            if (maxVal > 0.3) {
-                ecgRPeakPositions.push(beatStartIdx + maxIdx);
+            // Find R-peaks in this beat/chunk
+            const MULTI_CYCLE = ['vt_polymorphic', 'vt_monomorphic'];
+            if (MULTI_CYCLE.includes(state.rhythm)) {
+                // Multi-cycle chunks: find all local maxima
+                const PEAK_THRESH = 0.10;
+                const MIN_PEAK_GAP = Math.round(SAMPLE_RATE * 0.08);
+                let lastPeakIdx = -MIN_PEAK_GAP;
+                for (let i = 1; i < beat.length - 1; i++) {
+                    if (beat[i] > PEAK_THRESH &&
+                        beat[i] >= beat[i - 1] && beat[i] >= beat[i + 1] &&
+                        (i - lastPeakIdx) >= MIN_PEAK_GAP) {
+                        ecgRPeakPositions.push(beatStartIdx + i);
+                        lastPeakIdx = i;
+                    }
+                }
+            } else {
+                // Single-beat rhythms: mark only the highest positive sample
+                let maxVal = -Infinity, maxIdx = 0;
+                for (let i = 0; i < beat.length; i++) {
+                    if (beat[i] > maxVal) { maxVal = beat[i]; maxIdx = i; }
+                }
+                if (maxVal > 0.3) {
+                    ecgRPeakPositions.push(beatStartIdx + maxIdx);
+                }
             }
 
             ecgSamplesRemaining.push(...beat);
@@ -150,8 +175,8 @@
 
         // --- SpO2 Pleth ---
         while (plethSamplesRemaining.length < samplesToGenerate) {
-            const noPleth = ['ventricular_fibrillation', 'asystole'];
-            if (noPleth.includes(state.rhythm)) {
+            const noPleth = ['standby', 'ventricular_fibrillation', 'asystole'];
+            if (noPleth.includes(state.rhythm) || state.spo2 <= 0) {
                 // Flatline
                 const n = Math.round(SAMPLE_RATE * 0.5);
                 for (let i = 0; i < n; i++) plethSamplesRemaining.push(0.002 * (Math.random() - 0.5));
@@ -224,6 +249,7 @@
             ecgSamplesRemaining = [];
             ecgRPeakPositions = [];
             plethSamplesRemaining = [];
+            capnoSamplesRemaining = [];
             ecgBeatIndex = 0;
         }
     });

@@ -13,13 +13,13 @@ const MonitorChannel = (function () {
     const HEARTBEAT_INTERVAL = 2000; // ms
 
     const DEFAULT_STATE = {
-        rhythm: 'sinus_rhythm',
-        heart_rate: 72,
-        systolic: 120,
-        diastolic: 80,
-        spo2: 98,
-        etco2: 35,
-        respiratory_rate: 14,
+        rhythm: 'standby',
+        heart_rate: 0,
+        systolic: 0,
+        diastolic: 0,
+        spo2: 0,
+        etco2: 0,
+        respiratory_rate: 0,
         sync_mode: false,
         pacing_mode: false,
         pacing_rate: 70,

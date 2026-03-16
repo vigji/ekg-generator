@@ -10,6 +10,7 @@
 
     // --- Rhythm definitions (with abbreviations and default HR for auto-set) ---
     const RHYTHMS = [
+        { id: 'standby',                   abbr: '—',    label: 'Standby',         hrDefault: 0 },
         { id: 'sinus_rhythm',              abbr: 'NSR',  label: 'Sinus Rhythm',    hrDefault: 72 },
         { id: 'sinus_tachycardia',         abbr: 'ST',   label: 'Sinus Tach',      hrDefault: 100 },
         { id: 'atrial_fibrillation',       abbr: 'AFIB', label: 'A-Fib',           hrDefault: 80 },
@@ -51,6 +52,16 @@
     const channel = MonitorChannel.create();
     let currentState = channel.loadState();
 
+    // Enforce standby zeros (localStorage may have stale vitals)
+    if (currentState.rhythm === 'standby') {
+        currentState.heart_rate = 0;
+        currentState.systolic = 0;
+        currentState.diastolic = 0;
+        currentState.spo2 = 0;
+        currentState.etco2 = 0;
+        currentState.respiratory_rate = 0;
+    }
+
     // --- DOM refs ---
     const connStatus = document.getElementById('conn-status');
     const rhythmGrid = document.getElementById('rhythm-grid');
@@ -86,12 +97,18 @@
 
     // Pulseless rhythms: no cardiac output → BP reads 0
     const PULSELESS_RHYTHMS = new Set([
-        'ventricular_fibrillation', 'asystole', 'vt_polymorphic', 'agonal',
+        'standby', 'ventricular_fibrillation', 'asystole', 'vt_polymorphic', 'agonal',
     ]);
 
     function selectRhythm(rhythmId) {
         const update = { rhythm: rhythmId, heart_rate: getHRDefault(rhythmId) };
-        if (PULSELESS_RHYTHMS.has(rhythmId)) {
+        if (rhythmId === 'standby') {
+            update.systolic = 0;
+            update.diastolic = 0;
+            update.spo2 = 0;
+            update.etco2 = 0;
+            update.respiratory_rate = 0;
+        } else if (PULSELESS_RHYTHMS.has(rhythmId)) {
             update.systolic = 0;
             update.diastolic = 0;
         }
@@ -193,14 +210,14 @@
     // --- Reset ---
     resetBtn.addEventListener('click', () => {
         sendUpdate({
-            rhythm: 'sinus_rhythm',
-            heart_rate: 72,
-            systolic: 120,
-            diastolic: 80,
-            spo2: 98,
-            etco2: 35,
+            rhythm: 'standby',
+            heart_rate: 0,
+            systolic: 0,
+            diastolic: 0,
+            spo2: 0,
+            etco2: 0,
             sync_mode: false,
-            respiratory_rate: 14,
+            respiratory_rate: 0,
             pacing_mode: false,
             pacing_rate: 70,
             pacing_current: 70,
