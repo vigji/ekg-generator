@@ -810,6 +810,36 @@ const ECGRhythms = {
             }
             return signal;
         },
+
+        'hyperkalemia': function(sr, hr, idx) {
+            // Severe hyperkalemia: P wave with long PR, very wide negative
+            // QRS, tall peaked positive T wave, slow rate.
+            const rr = 60.0 / hr;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            for (let i = 0; i < n; i++) {
+                const t = i / n; // normalized 0..1
+                let v = 0;
+
+                // P wave: broad, flat/low amplitude
+                v += 0.06 * Math.exp(-Math.pow((t - 0.05) / 0.025, 2) / 2);
+
+                // Very wide QRS — large negative deflection (very long PR)
+                v += -0.70 * Math.exp(-Math.pow((t - 0.45) / 0.08, 2) / 2);
+
+                // Tall peaked positive T wave
+                v += 0.65 * Math.exp(-Math.pow((t - 0.72) / 0.050, 2) / 2);
+
+                signal[i] = v;
+            }
+
+            // Tiny noise
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.005 * (Math.random() - 0.5);
+            }
+            return signal;
+        },
     },
 
     /**
