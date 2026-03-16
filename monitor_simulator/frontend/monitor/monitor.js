@@ -11,7 +11,21 @@
     const channel = MonitorChannel.create();
 
     // --- State ---
-    let state = channel.loadState();
+    // Start with "just powered on" defaults — flat traces, no values
+    // Real values come only when the controller connects and sends state.
+    let state = {
+        rhythm: 'asystole',
+        heart_rate: 0,
+        systolic: 0,
+        diastolic: 0,
+        spo2: 0,
+        etco2: 0,
+        respiratory_rate: 0,
+        sync_mode: false,
+        pacing_mode: false,
+        pacing_rate: 70,
+        pacing_current: 70,
+    };
 
     // --- Waveform renderers ---
     const ecgRenderer = new WaveformRenderer(
@@ -41,22 +55,21 @@
 
     // --- Update numeric displays ---
     function updateNumerics() {
-        // For lethal rhythms, show dashes
+        // For lethal rhythms or "just powered on" (values=0), show dashes
         const noHR = ['ventricular_fibrillation', 'asystole'];
         if (state.pacing_mode && state.pacing_current >= 60) {
-            // Pacing with capture — show pacing rate
             hrValue.textContent = state.pacing_rate;
             spo2Value.textContent = state.spo2;
-        } else if (noHR.includes(state.rhythm)) {
+        } else if (noHR.includes(state.rhythm) || state.heart_rate === 0) {
             hrValue.textContent = '---';
             spo2Value.textContent = '---';
         } else {
             hrValue.textContent = state.heart_rate;
             spo2Value.textContent = state.spo2;
         }
-        etco2Value.textContent = state.etco2;
-        bpSys.textContent = state.systolic;
-        bpDia.textContent = state.diastolic;
+        etco2Value.textContent = state.etco2 || '---';
+        bpSys.textContent = state.systolic || '---';
+        bpDia.textContent = state.diastolic || '---';
     }
 
     // --- Waveform generation (called each frame) ---
@@ -154,8 +167,14 @@
         const capnoSR = 250; // lower sample rate for capno
         const capnoSamples = Math.round(capnoSR * dt);
         while (capnoSamplesRemaining.length < capnoSamples) {
-            const breath = CapnoGenerator.generateBreath(capnoSR, state.respiratory_rate, state.etco2);
-            capnoSamplesRemaining.push(...breath);
+            if (!state.respiratory_rate || state.respiratory_rate <= 0) {
+                // No respiratory rate — flatline
+                const n = Math.round(capnoSR * 0.5);
+                for (let i = 0; i < n; i++) capnoSamplesRemaining.push(0);
+            } else {
+                const breath = CapnoGenerator.generateBreath(capnoSR, state.respiratory_rate, state.etco2);
+                capnoSamplesRemaining.push(...breath);
+            }
         }
         const capnoChunk = new Float32Array(capnoSamplesRemaining.splice(0, capnoSamples));
         capnoRenderer.pushSamples(capnoChunk, capnoSR);
@@ -217,8 +236,10 @@
     });
 
     // --- Start ---
+    // Show "just powered on" state (flat traces, dashes) until controller connects.
+    // Only request state via BroadcastChannel — don't fall back to localStorage.
     updateNumerics();
-    channel.requestState();
+    channel._bc.postMessage({ type: 'state_request' });
     channel.startConnectionMonitor();
     requestAnimationFrame(animate);
 })();

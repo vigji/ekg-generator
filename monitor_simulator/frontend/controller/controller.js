@@ -238,5 +238,6 @@
     setupSliders();
     buildScales();
     applyState(currentState);
+    channel.postState(currentState); // broadcast initial state to any open monitors
     channel.startHeartbeat();
 })();
