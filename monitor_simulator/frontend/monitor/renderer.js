@@ -639,6 +639,47 @@ const ECGRhythms = {
             return beat;
         },
 
+        'wpw': function(sr, hr, idx) {
+            // WPW: short PR, delta wave (slurred QRS upstroke), wide QRS, inverted T
+            const rr = 60.0 / hr;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            for (let i = 0; i < n; i++) {
+                const t = i / sr / rr; // normalized 0..1
+                let v = 0;
+
+                // P wave: small, upright (short PR)
+                v += 0.13 * Math.exp(-Math.pow((t - 0.19) / 0.030, 2) / 2);
+
+                // Delta wave: sigmoid ramp from baseline into QRS
+                // Starts ~0.245, reaches ~0.40 by 0.34
+                const deltaCenter = 0.29;
+                const deltaWidth = 0.025;
+                const delta = 0.40 / (1 + Math.exp(-(t - deltaCenter) / deltaWidth));
+                // Fade delta after R peak so it doesn't affect later waveform
+                const deltaFade = 1 / (1 + Math.exp((t - 0.38) / 0.010));
+                v += delta * deltaFade;
+
+                // R wave: sharp peak on top of delta
+                v += 0.65 * Math.exp(-Math.pow((t - 0.36) / 0.020, 2) / 2);
+
+                // S wave: deep, below baseline
+                v += -0.55 * Math.exp(-Math.pow((t - 0.43) / 0.022, 2) / 2);
+
+                // T wave: broad, inverted (discordant repolarization)
+                v += -0.20 * Math.exp(-Math.pow((t - 0.57) / 0.060, 2) / 2);
+
+                signal[i] = v;
+            }
+
+            // Tiny noise
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.003 * (Math.random() - 0.5);
+            }
+            return signal;
+        },
+
         'tca_toxicity': function(sr, hr, idx) {
             // Sinus tach with very wide QRS, P waves partially buried
             const effectiveHR = Math.max(hr, 110);
