@@ -543,24 +543,56 @@ const ECGRhythms = {
         },
 
         'av_block_3': function(sr, hr, idx) {
-            // Complete heart block — P waves march independently at ~75 bpm
-            // Ventricles escape at ~35 bpm with wide QRS
+            // Complete heart block — P waves march independently at ~75 bpm,
+            // ventricles escape at ~35 bpm with wide QRS + inverted T.
+            // Uses persistent phase counter for continuous P wave dissociation.
             const ventRate = 35;
-            const beat = ECGRhythms._wideBeat(sr, ventRate, {
-                rAmp: 0.7,
-            });
-            // P waves at atrial rate, dissociated via modular arithmetic
+            const rr = 60.0 / ventRate;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            // Initialize persistent P wave phase
+            if (ECGRhythms._chbPPhase === undefined) ECGRhythms._chbPPhase = 0;
+
             const atrialRate = 75;
-            const atrialPeriodSamples = Math.round(sr * 60.0 / atrialRate);
-            const ventPeriodSamples = beat.length;
-            // Use golden ratio offset for smooth dissociation across beats
-            const pStartOffset = Math.round((idx * atrialPeriodSamples * 0.618) % atrialPeriodSamples);
-            for (let i = 0; i < beat.length; i++) {
-                const posInAtrial = (i + pStartOffset) % atrialPeriodSamples;
-                const tNorm = posInAtrial / atrialPeriodSamples;
-                beat[i] += 0.12 * Math.exp(-Math.pow((tNorm - 0.15) / 0.04, 2) / 2);
+            const pPeriodSamples = sr * 60.0 / atrialRate;
+
+            // 1) Continuous P waves at atrial rate (phase-continuous across beats)
+            for (let i = 0; i < n; i++) {
+                const pPhase = ECGRhythms._chbPPhase / pPeriodSamples;
+                // P wave: small upright Gaussian bump
+                const pFrac = pPhase % 1.0;
+                signal[i] = 0.14 * Math.exp(-Math.pow((pFrac - 0.15) / 0.035, 2) / 2);
+                ECGRhythms._chbPPhase++;
             }
-            return beat;
+
+            // 2) Insert ventricular escape QRS + broad inverted T
+            const qrsCenterSample = Math.round(0.35 * n);
+            const rVar = 1.0 + (Math.random() - 0.5) * 0.06;
+
+            for (let i = 0; i < n; i++) {
+                const dt = (i - qrsCenterSample) / sr;
+
+                // QRS-T complex matching reference morphology:
+                // small Q → tall sharp R → deep S → broad inverted T
+                const q = -0.08 * Math.exp(-0.5 * Math.pow((dt + 0.022) / 0.008, 2));
+                const r = 0.90 * rVar * Math.exp(-0.5 * Math.pow(dt / 0.014, 2));
+                const s = -0.45 * Math.exp(-0.5 * Math.pow((dt - 0.035) / 0.020, 2));
+                const t = -0.22 * Math.exp(-0.5 * Math.pow((dt - 0.16) / 0.060, 2));
+
+                const qrsVal = q + r + s + t;
+
+                // Narrow suppression: only mask P waves right at QRS, not during T
+                const envelope = Math.exp(-0.5 * Math.pow(dt / 0.05, 2));
+                signal[i] = signal[i] * (1.0 - envelope) + qrsVal;
+            }
+
+            // 3) Tiny noise for realism
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.003 * (Math.random() - 0.5);
+            }
+
+            return signal;
         },
 
         'stemi': function(sr, hr, idx) {
