@@ -771,25 +771,44 @@ const ECGRhythms = {
         },
 
         'tca_toxicity': function(sr, hr, idx) {
-            // Sinus tach with very wide QRS, P waves partially buried
+            // TCA toxicity: wide-complex tachycardia with sharp biphasic
+            // complexes. Tall sharp R peak followed by deep broad S/T trough.
+            // No P waves. Variable amplitude.
             const effectiveHR = Math.max(hr, 110);
-            return ECGRhythms._normalBeat(sr, effectiveHR, {
-                pAmp: 0.08,
-                pPos: 0.20,
-                pWidth: 0.03,
-                qAmp: -0.12,
-                qPos: 0.30,
-                qWidth: 0.025,
-                rAmp: 0.85,
-                rPos: 0.37,
-                rWidth: 0.04,
-                sAmp: -0.30,
-                sPos: 0.45,
-                sWidth: 0.035,
-                tAmp: -0.25,
-                tPos: 0.60,
-                tWidth: 0.07,
-            });
+            const rr = 60.0 / effectiveHR;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            for (let i = 0; i < n; i++) {
+                const t = i / n; // normalized 0..1
+                let v = 0;
+
+                // R wave: positive, sharp
+                v += 0.65 * Math.exp(-Math.pow((t - 0.12) / 0.035, 2) / 2);
+
+                // S wave: shallow, blending smoothly with R descent
+                v += -0.08 * Math.exp(-Math.pow((t - 0.22) / 0.025, 2) / 2);
+
+                // ST-T: gradual rise from S into broad T wave
+                const stStart = 0.26;
+                const tPeak = 0.58;
+                const tEnd = 0.78;
+                if (t > stStart && t <= tPeak) {
+                    const phase = (t - stStart) / (tPeak - stStart);
+                    v += 0.35 * phase * phase * phase;
+                } else if (t > tPeak && t <= tEnd) {
+                    const phase = (t - tPeak) / (tEnd - tPeak);
+                    v += 0.35 * 0.5 * (1 + Math.cos(Math.PI * phase));
+                }
+
+                signal[i] = v;
+            }
+
+            // Tiny noise
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.005 * (Math.random() - 0.5);
+            }
+            return signal;
         },
     },
 
