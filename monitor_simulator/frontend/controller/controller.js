@@ -33,6 +33,7 @@
         { id: 'de_winter',               abbr: 'DW',   label: 'De Winter',       hrDefault: 72 },
         { id: 'tca_toxicity',            abbr: 'TCA',  label: 'TCA Toxicity',    hrDefault: 110 },
         { id: 'wpw',                     abbr: 'WPW',  label: 'WPW',             hrDefault: 72 },
+        { id: 'af_wpw',                  abbr: 'FAWPW', label: 'FA-WPW',         hrDefault: 180 },
     ];
 
     // --- Scale tick configs for each slider ---

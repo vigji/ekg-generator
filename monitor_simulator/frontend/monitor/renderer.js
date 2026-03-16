@@ -680,6 +680,58 @@ const ECGRhythms = {
             return signal;
         },
 
+        'af_wpw': function(sr, hr, idx) {
+            // AF with WPW: fast irregular wide-complex tachycardia.
+            // Wide monophasic POSITIVE QRS (no delta wave) + negative T wave.
+            // Variable morphology beat-to-beat. Very fast irregular. No P waves.
+            const effectiveHR = Math.max(hr, 160);
+            const variation = 0.55 + Math.random() * 0.90;
+            const beatHR = effectiveHR * variation;
+            const rr = 60.0 / beatHR;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            // Per-beat variation
+            const amp = 0.8 + Math.random() * 0.8;           // QRS height
+            const qrsW = 0.04 + Math.random() * 0.03;        // QRS width (wide: 40-70ms)
+            const qrsSkew = 0.4 + Math.random() * 0.5;       // asymmetry
+            const tAmp = 0.25 + Math.random() * 0.20;        // T wave depth
+
+            // QRS center at ~30% of beat, T wave after
+            const qrsCenter = 0.25 + Math.random() * 0.10;
+            const tCenter = qrsCenter + 0.22 + Math.random() * 0.06;
+
+            for (let i = 0; i < n; i++) {
+                const t = i / n;
+                const ts = i / sr;
+                let v = 0;
+
+                // Subtle fibrillatory baseline
+                const fPhase = idx * 23.7;
+                v += 0.010 * (
+                    Math.sin(2 * Math.PI * 4.3 * ts + fPhase) +
+                    Math.sin(2 * Math.PI * 7.1 * ts + fPhase * 1.3)
+                );
+
+                // Wide positive QRS: asymmetric sub-Gaussian (between pointy and rounded)
+                const dt = t - qrsCenter;
+                const w = dt < 0 ? qrsW : qrsW * qrsSkew;
+                v += amp * Math.exp(-Math.pow(Math.abs(dt) / w, 1.5));
+
+                // Broad negative T wave
+                const dtT = t - tCenter;
+                v += -amp * tAmp * Math.exp(-Math.pow(dtT / 0.07, 2) / 2);
+
+                signal[i] = v;
+            }
+
+            // Tiny noise
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.004 * (Math.random() - 0.5);
+            }
+            return signal;
+        },
+
         'tca_toxicity': function(sr, hr, idx) {
             // Sinus tach with very wide QRS, P waves partially buried
             const effectiveHR = Math.max(hr, 110);
