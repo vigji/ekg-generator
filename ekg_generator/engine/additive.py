@@ -108,49 +108,14 @@ def add_sawtooth_flutter(
     sampling_rate: int,
     flutter_rate: float = 300.0,
     amplitude: float = 0.3,
-    beat_times: np.ndarray | None = None,
 ) -> np.ndarray:
-    """Add sawtooth flutter waves for atrial flutter.
-
-    Generates smooth, rounded sawtooth waves that are attenuated during
-    QRS complexes so the ventricular complexes remain clearly visible.
-    """
+    """Add sawtooth flutter waves for atrial flutter."""
     n_samples = len(ecg)
     t = np.arange(n_samples) / sampling_rate
     freq = flutter_rate / 60.0  # convert bpm to Hz
 
-    # Build a smooth rounded sawtooth: gradual downslope, sharper upstroke
-    # Use a skewed sinusoidal approach for organic morphology
-    phase = 2 * np.pi * freq * t
-    # Asymmetric wave: slow descent (negative going), quick return
-    # Combine harmonics for a rounded sawtooth shape
-    flutter = (
-        -np.sin(phase)
-        + 0.35 * np.sin(2 * phase)
-        - 0.15 * np.sin(3 * phase)
-    )
-    # Normalize to [-1, 1] then scale
-    flutter = flutter / np.max(np.abs(flutter)) * amplitude
-
-    # Attenuate flutter waves around QRS complexes so they don't obscure them
-    if beat_times is not None:
-        mask = np.ones(n_samples)
-        qrs_half_width = int(0.06 * sampling_rate)  # ~60ms each side
-        taper_width = int(0.04 * sampling_rate)      # ~40ms taper
-        for bt in beat_times:
-            center = int(bt * sampling_rate)
-            start = max(0, center - qrs_half_width - taper_width)
-            end = min(n_samples, center + qrs_half_width + taper_width)
-            for i in range(start, end):
-                dist = abs(i - center)
-                if dist <= qrs_half_width:
-                    mask[i] = 0.0
-                else:
-                    # Smooth cosine taper
-                    frac = (dist - qrs_half_width) / taper_width
-                    mask[i] = min(mask[i], 0.5 * (1 - np.cos(np.pi * frac)))
-        flutter = flutter * mask
-
+    # Sawtooth wave: rises slowly, drops sharply (inverted sawtooth)
+    flutter = -amplitude * sp_signal.sawtooth(2 * np.pi * freq * t, width=0.7)
     return ecg + flutter
 
 

@@ -170,39 +170,49 @@ const ECGRhythms = {
         },
 
         'atrial_flutter': function(sr, hr, idx) {
-            // Classic inverted sawtooth flutter at ~300/min with variable conduction
-            // Ref: sharp negative deflection, gradual upslope back to baseline
-            const variation = 0.85 + Math.random() * 0.3; // variable block (85-115%)
+            // Atrial flutter: continuous rounded sawtooth flutter waves at 300/min
+            // with narrow QRS complexes inserted at ventricular rate.
+            // Flutter waves use harmonic synthesis for organic morphology.
+            const variation = 0.92 + Math.random() * 0.16; // subtle rate variation
             const effectiveHR = hr * variation;
             const rr = 60.0 / effectiveHR;
             const n = Math.round(rr * sr);
             const signal = new Float32Array(n);
-            const flutterRate = 300;
-            const flutterPeriod = sr * 60.0 / flutterRate;
+            const flutterFreq = 300.0 / 60.0; // 5 Hz
+            const flutterAmp = 0.16;
 
+            // Continuous flutter waves: asymmetric rounded sawtooth via harmonics
             for (let i = 0; i < n; i++) {
-                const phase = (i % flutterPeriod) / flutterPeriod;
-                // Inverted sawtooth: 30% sharp downstroke, 70% gradual upslope
-                if (phase < 0.3) {
-                    // Sharp negative deflection
-                    signal[i] = -0.22 * Math.sin(Math.PI * phase / 0.3);
-                } else {
-                    // Gradual upslope back to baseline
-                    const upPhase = (phase - 0.3) / 0.7;
-                    signal[i] = -0.22 * Math.sin(Math.PI * (1 - upPhase) * 0.3 / 0.3) * (1 - upPhase);
-                }
+                const t = i / sr;
+                const phase = 2 * Math.PI * flutterFreq * t;
+                let f = -Math.sin(phase)
+                      + 0.40 * Math.sin(2 * phase)
+                      - 0.18 * Math.sin(3 * phase)
+                      + 0.08 * Math.sin(4 * phase);
+                signal[i] = f / 1.45 * flutterAmp; // normalize
             }
-            // Overlay narrow QRS
-            const qrs = ECGRhythms._normalBeat(sr, effectiveHR, { pAmp: 0, rAmp: 1.1 });
-            const offset = Math.floor(0.37 * n - 0.37 * qrs.length);
-            for (let i = 0; i < qrs.length && i + offset < n; i++) {
-                if (i + offset >= 0) {
-                    const t = i / qrs.length;
-                    if (t > 0.28 && t < 0.72) {
-                        signal[i + offset] += qrs[i];
-                    }
-                }
+
+            // Insert narrow QRS at ~37% of beat cycle
+            const qrsCenterSample = Math.round(0.37 * n);
+            const rVar = 1.0 + (Math.random() - 0.5) * 0.06;
+            const sVar = 1.0 + (Math.random() - 0.5) * 0.10;
+            const qrsHalfWidth = Math.round(0.025 * sr) * 4;
+
+            for (let i = Math.max(0, qrsCenterSample - qrsHalfWidth);
+                 i < Math.min(n, qrsCenterSample + qrsHalfWidth); i++) {
+                const dt = (i - qrsCenterSample) / sr;
+                // R wave
+                const r = 1.1 * rVar * Math.exp(-0.5 * Math.pow(dt / 0.012, 2));
+                // Q wave
+                const q = -0.10 * Math.exp(-0.5 * Math.pow((dt + 0.022) / 0.008, 2));
+                // S wave
+                const s = -0.30 * sVar * Math.exp(-0.5 * Math.pow((dt - 0.028) / 0.014, 2));
+                const qrsVal = r + q + s;
+                // Blend: suppress flutter during QRS
+                const envelope = Math.exp(-0.5 * Math.pow(dt / 0.035, 2));
+                signal[i] = signal[i] * (1.0 - envelope) + qrsVal;
             }
+
             return signal;
         },
 

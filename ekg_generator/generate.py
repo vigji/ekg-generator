@@ -15,7 +15,7 @@ from scipy.signal import butter, sosfiltfilt
 
 from .rhythms.registry import RhythmConfig, get as get_rhythm
 from .engine.ecgsyn import generate_ecgsyn
-from .engine.noise import generate_vfib, generate_sinusoidal, generate_flatline, generate_aflutter
+from .engine.noise import generate_vfib, generate_sinusoidal, generate_flatline
 from .engine.scheduler import generate_rr_regular, generate_rr_irregular, generate_rr_flutter
 from .engine.additive import (
     add_pacing_spikes,
@@ -68,7 +68,7 @@ def generate_ecg_signal(
 
     # Generate beat times for scheduling
     beat_times = None
-    if config.engine in ("ecgsyn", "aflutter"):
+    if config.engine == "ecgsyn":
         if config.rr_mode == "irregular":
             beat_times = generate_rr_irregular(
                 duration, config.heart_rate, config.rr_irregularity, rng=rng
@@ -114,13 +114,6 @@ def generate_ecg_signal(
             amplitude_modulation=config.amplitude_modulation,
             rng=rng,
         )
-    elif config.engine == "aflutter":
-        ecg = generate_aflutter(
-            duration=duration,
-            sampling_rate=sampling_rate,
-            beat_times=beat_times,
-            rng=rng,
-        )
     elif config.engine == "flatline":
         ecg = generate_flatline(
             duration=duration,
@@ -130,8 +123,8 @@ def generate_ecg_signal(
     else:
         raise ValueError(f"Unknown engine: {config.engine!r}")
 
-    # Highpass filter to remove DC offset / drift (skip for flatline/aflutter)
-    if config.engine not in ("flatline", "aflutter"):
+    # Highpass filter to remove DC offset / drift (skip for flatline — no benefit)
+    if config.engine != "flatline":
         ecg = _highpass_filter(ecg, sampling_rate)
 
     # Apply additive features
@@ -143,7 +136,6 @@ def generate_ecg_signal(
             ecg, sampling_rate,
             flutter_rate=config.sawtooth_flutter.get("rate", 300),
             amplitude=config.sawtooth_flutter.get("amplitude", 0.3),
-            beat_times=beat_times,
         )
 
     if config.pacing_spikes is not None and beat_times is not None:
@@ -227,7 +219,7 @@ def generate_scenario(
     ecg, beat_times = generate_ecg_signal(config, signal_duration, SAMPLING_RATE, random_state)
 
     # Generate pleth
-    has_pulse = config.engine in ("ecgsyn", "aflutter") and config.heart_rate > 30
+    has_pulse = config.engine == "ecgsyn" and config.heart_rate > 30
     if has_pulse and scenario.spo2 is not None:
         pleth = generate_pleth(
             signal_duration, SAMPLING_RATE, beat_times,
@@ -260,7 +252,7 @@ def generate_scenario(
             beat_times = beat_times[beat_times < circular_len / SAMPLING_RATE]
 
     # Determine display HR from actual signal, not config
-    if config.engine in ("ecgsyn", "aflutter"):
+    if config.engine == "ecgsyn":
         display_hr = _compute_actual_hr(beat_times)
     elif config.engine == "sinusoidal":
         display_hr = config.heart_rate  # deterministic, matches exactly

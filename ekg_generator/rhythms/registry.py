@@ -240,12 +240,11 @@ register(RhythmConfig(
 
 register(RhythmConfig(
     name="aflutter",
-    engine="aflutter",
     heart_rate=75,  # ventricular rate
-    heart_rate_std=0.5,
     rr_mode="flutter",
     flutter_conduction_ratio=4,
-    baseline_wander=0.01,
+    ai=(0.0, -5, 30, -7.5, 0.75),  # no P waves
+    sawtooth_flutter={"rate": 300, "amplitude": 0.3},
 ))
 
 register(RhythmConfig(
