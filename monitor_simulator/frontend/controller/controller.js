@@ -38,7 +38,7 @@
     // --- Scale tick configs for each slider ---
     const SCALE_CONFIGS = {
         heart_rate: { min: 20,  max: 250, ticks: [20, 50, 100, 150, 200, 250] },
-        systolic:   { min: 0,   max: 300, ticks: [0, 100, 150, 200, 250, 300] },
+        systolic:   { min: 0,   max: 300, ticks: [0, 50, 100, 150, 200, 250, 300] },
         diastolic:  { min: 0,   max: 200, ticks: [0, 50, 100, 150, 200] },
         spo2:       { min: 0,   max: 100, ticks: [0, 20, 40, 60, 80, 100] },
         etco2:      { min: 0,   max: 80,  ticks: [0, 20, 40, 60, 80] },
