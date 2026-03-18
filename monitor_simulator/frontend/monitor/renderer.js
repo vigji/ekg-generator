@@ -148,23 +148,49 @@ const ECGRhythms = {
         },
 
         'atrial_fibrillation': function(sr, hr, idx) {
-            // Irregular RR — wider variation (60-150% of base)
-            const variation = 0.6 + Math.random() * 0.9;
+            // Irregularly irregular RR — wide variation (50-170% of base)
+            const variation = 0.50 + Math.random() * 1.20;
             const effectiveHR = hr * variation;
-            const beat = ECGRhythms._normalBeat(sr, effectiveHR, {
+            const rr = 60.0 / effectiveHR;
+            const n = Math.round(rr * sr);
+
+            // Generate QRS-T at a very fast reference rate so the complex
+            // always fits within even the shortest RR intervals
+            const refHR = 170;
+            const refBeat = ECGRhythms._normalBeat(sr, refHR, {
                 pAmp: 0,
+                qAmp: -0.08,
+                qPos: 0.18,
+                qWidth: 0.008,
+                rAmp: 1.0,
+                rPos: 0.21,
+                rWidth: 0.012,
+                sAmp: -0.18,
+                sPos: 0.24,
+                sWidth: 0.010,
+                tAmp: 0.22,
+                tPos: 0.44,
+                tWidth: 0.070,
             });
-            // Tripled f-wave components for realistic fibrillatory baseline
+
+            // Build output: copy refBeat then pad/trim to match actual RR
+            const beat = new Float32Array(n);
+            const copyLen = Math.min(refBeat.length, n);
+            for (let i = 0; i < copyLen; i++) beat[i] = refBeat[i];
+            // Remaining samples stay at 0 (flat baseline)
+
+            // Subtle fibrillatory baseline
             const phase1 = idx * 31.7;
             const phase2 = idx * 47.3;
             const phase3 = idx * 19.1;
-            for (let i = 0; i < beat.length; i++) {
+            for (let i = 0; i < n; i++) {
                 const t = i / sr;
-                beat[i] += 0.025 * (
+                beat[i] += 0.008 * (
                     Math.sin(2 * Math.PI * 4.1 * t + phase1) +
                     Math.sin(2 * Math.PI * 6.5 * t + phase2) +
                     Math.sin(2 * Math.PI * 8.3 * t + phase3)
                 );
+                beat[i] += 0.004 * (Math.random() - 0.5);
             }
             return beat;
         },
