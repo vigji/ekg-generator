@@ -102,6 +102,7 @@
     ]);
 
     function selectRhythm(rhythmId) {
+        const wasStandby = currentState.rhythm === 'standby';
         const update = { rhythm: rhythmId, heart_rate: getHRDefault(rhythmId) };
         if (rhythmId === 'standby') {
             update.systolic = 0;
@@ -113,13 +114,15 @@
             update.systolic = 0;
             update.diastolic = 0;
         }
-        // Restore default vitals if coming from standby (values were zeroed)
-        if (rhythmId !== 'standby') {
+        // Restore default vitals only when coming FROM standby
+        if (wasStandby && rhythmId !== 'standby') {
             if (!currentState.spo2) update.spo2 = 98;
             if (!currentState.etco2) update.etco2 = 35;
             if (!currentState.respiratory_rate) update.respiratory_rate = 14;
-            if (!currentState.systolic && !PULSELESS_RHYTHMS.has(rhythmId)) update.systolic = 120;
-            if (!currentState.diastolic && !PULSELESS_RHYTHMS.has(rhythmId)) update.diastolic = 80;
+            if (!PULSELESS_RHYTHMS.has(rhythmId)) {
+                if (!currentState.systolic) update.systolic = 120;
+                if (!currentState.diastolic) update.diastolic = 80;
+            }
         }
         sendUpdate(update);
     }
