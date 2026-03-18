@@ -28,6 +28,7 @@
         { id: 'fine_vf',                  abbr: 'FVF',  label: 'Fine VF',         hrDefault: 72 },
         { id: 'pacemaker',               abbr: 'PAC',  label: 'Pacemaker',       hrDefault: 70 },
         { id: 'agonal',                   abbr: 'AG',   label: 'Agonal',          hrDefault: 20 },
+        { id: 'ventricular_standstill',  abbr: 'VS',   label: 'V Standstill',    hrDefault: 35 },
         { id: 'asystole',                abbr: 'ASY',  label: 'Asystole',        hrDefault: 72 },
         { id: 'stemi',                    abbr: 'STEMI', label: 'Inferior STEMI', hrDefault: 72 },
         { id: 'tca_toxicity',            abbr: 'TCA',  label: 'TCA Toxicity',    hrDefault: 110 },
@@ -99,7 +100,7 @@
 
     // Pulseless rhythms: no cardiac output → BP reads 0
     const PULSELESS_RHYTHMS = new Set([
-        'standby', 'ventricular_fibrillation', 'fine_vf', 'asystole', 'vt_polymorphic', 'agonal',
+        'standby', 'ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole', 'vt_polymorphic', 'agonal',
     ]);
 
     function selectRhythm(rhythmId) {

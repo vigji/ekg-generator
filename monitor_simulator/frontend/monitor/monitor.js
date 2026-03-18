@@ -65,7 +65,7 @@
             return;
         }
         // For lethal rhythms show dashes for HR/SpO2
-        const noHR = ['ventricular_fibrillation', 'fine_vf', 'asystole'];
+        const noHR = ['ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole'];
         if (state.pacing_mode && state.pacing_current >= 60) {
             hrValue.textContent = state.pacing_rate;
             spo2Value.textContent = state.spo2;
@@ -175,7 +175,7 @@
 
         // --- SpO2 Pleth ---
         while (plethSamplesRemaining.length < samplesToGenerate) {
-            const noPleth = ['standby', 'ventricular_fibrillation', 'fine_vf', 'asystole'];
+            const noPleth = ['standby', 'ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole'];
             if (noPleth.includes(state.rhythm) || state.spo2 <= 0) {
                 // Flatline
                 const n = Math.round(SAMPLE_RATE * 0.5);

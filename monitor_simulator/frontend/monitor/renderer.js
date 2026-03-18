@@ -455,6 +455,24 @@ const ECGRhythms = {
             return signal;
         },
 
+        'ventricular_standstill': function(sr, hr, idx) {
+            // Ventricular standstill: flat baseline with only P waves, no QRS/T.
+            // Atria fire regularly but ventricles don't respond.
+            const pRate = Math.max(hr, 30); // P wave rate
+            const rr = 60.0 / pRate;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            for (let i = 0; i < n; i++) {
+                const t = i / sr / rr; // normalized 0..1
+                // Small upright P wave early in the cycle
+                signal[i] = 0.12 * Math.exp(-Math.pow((t - 0.15) / 0.030, 2) / 2);
+                // Tiny noise
+                signal[i] += 0.003 * (Math.random() - 0.5);
+            }
+            return signal;
+        },
+
         'fine_vf': function(sr, hr, idx) {
             // Fine VF: very low amplitude rapid irregular oscillations
             const n = Math.round(sr * 0.5);
@@ -871,7 +889,7 @@ const ECGRhythms = {
      * Returns true if the rhythm supports SYNC markers (has identifiable R waves).
      */
     supportsSyncMarker(rhythm) {
-        const noSync = ['standby', 'ventricular_fibrillation', 'fine_vf', 'asystole'];
+        const noSync = ['standby', 'ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole'];
         return !noSync.includes(rhythm);
     },
 
