@@ -25,6 +25,7 @@
         { id: 'vt_monomorphic',           abbr: 'VT',   label: 'V-Tach Mono',     hrDefault: 200 },
         { id: 'vt_polymorphic',           abbr: 'PVT',  label: 'V-Tach Poly',     hrDefault: 180 },
         { id: 'ventricular_fibrillation', abbr: 'VF',   label: 'V-Fib',           hrDefault: 72 },
+        { id: 'fine_vf',                  abbr: 'FVF',  label: 'Fine VF',         hrDefault: 72 },
         { id: 'pacemaker',               abbr: 'PAC',  label: 'Pacemaker',       hrDefault: 70 },
         { id: 'agonal',                   abbr: 'AG',   label: 'Agonal',          hrDefault: 20 },
         { id: 'asystole',                abbr: 'ASY',  label: 'Asystole',        hrDefault: 72 },
@@ -98,7 +99,7 @@
 
     // Pulseless rhythms: no cardiac output → BP reads 0
     const PULSELESS_RHYTHMS = new Set([
-        'standby', 'ventricular_fibrillation', 'asystole', 'vt_polymorphic', 'agonal',
+        'standby', 'ventricular_fibrillation', 'fine_vf', 'asystole', 'vt_polymorphic', 'agonal',
     ]);
 
     function selectRhythm(rhythmId) {

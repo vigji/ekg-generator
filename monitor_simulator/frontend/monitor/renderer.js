@@ -455,6 +455,31 @@ const ECGRhythms = {
             return signal;
         },
 
+        'fine_vf': function(sr, hr, idx) {
+            // Fine VF: very low amplitude rapid irregular oscillations
+            const n = Math.round(sr * 0.5);
+            const signal = new Float32Array(n);
+            const dt = 1.0 / sr;
+
+            // Persistent phase for continuity
+            if (!ECGRhythms._fvfPhase) ECGRhythms._fvfPhase = 0;
+
+            for (let i = 0; i < n; i++) {
+                const t = ECGRhythms._fvfPhase;
+                // Multiple low-amplitude oscillations at varying frequencies
+                let v = 0;
+                v += 0.04 * Math.sin(2 * Math.PI * 5.2 * t);
+                v += 0.03 * Math.sin(2 * Math.PI * 7.8 * t + 1.2);
+                v += 0.025 * Math.sin(2 * Math.PI * 11.3 * t + 2.7);
+                v += 0.02 * Math.sin(2 * Math.PI * 3.4 * t + 0.8);
+                // Random amplitude modulation for irregularity
+                const env = 0.6 + 0.4 * Math.sin(2 * Math.PI * 0.4 * t);
+                signal[i] = v * env + 0.008 * (Math.random() - 0.5);
+                ECGRhythms._fvfPhase += dt;
+            }
+            return signal;
+        },
+
         'standby': function(sr, hr, idx) {
             const n = Math.round(sr * 1.5);
             const signal = new Float32Array(n);
@@ -846,7 +871,7 @@ const ECGRhythms = {
      * Returns true if the rhythm supports SYNC markers (has identifiable R waves).
      */
     supportsSyncMarker(rhythm) {
-        const noSync = ['standby', 'ventricular_fibrillation', 'asystole'];
+        const noSync = ['standby', 'ventricular_fibrillation', 'fine_vf', 'asystole'];
         return !noSync.includes(rhythm);
     },
 
