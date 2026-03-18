@@ -38,9 +38,9 @@
     // --- Scale tick configs for each slider ---
     const SCALE_CONFIGS = {
         heart_rate: { min: 20,  max: 250, ticks: [20, 50, 100, 150, 200, 250] },
-        systolic:   { min: 30,  max: 300, ticks: [30, 100, 150, 200, 250, 300] },
-        diastolic:  { min: 10,  max: 200, ticks: [10, 50, 100, 150, 200] },
-        spo2:       { min: 50,  max: 100, ticks: [50, 60, 70, 80, 90, 100] },
+        systolic:   { min: 0,   max: 300, ticks: [0, 100, 150, 200, 250, 300] },
+        diastolic:  { min: 0,   max: 200, ticks: [0, 50, 100, 150, 200] },
+        spo2:       { min: 0,   max: 100, ticks: [0, 20, 40, 60, 80, 100] },
         etco2:      { min: 0,   max: 80,  ticks: [0, 20, 40, 60, 80] },
     };
 
@@ -114,16 +114,7 @@
             update.systolic = 0;
             update.diastolic = 0;
         }
-        // Restore default vitals only when coming FROM standby
-        if (wasStandby && rhythmId !== 'standby') {
-            if (!currentState.spo2) update.spo2 = 98;
-            if (!currentState.etco2) update.etco2 = 35;
-            if (!currentState.respiratory_rate) update.respiratory_rate = 14;
-            if (!PULSELESS_RHYTHMS.has(rhythmId)) {
-                if (!currentState.systolic) update.systolic = 120;
-                if (!currentState.diastolic) update.diastolic = 80;
-            }
-        }
+        // No auto-restore of vitals — they stay as set by the user
         sendUpdate(update);
     }
 
