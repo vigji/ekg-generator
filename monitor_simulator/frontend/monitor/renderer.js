@@ -517,14 +517,35 @@ const ECGRhythms = {
         },
 
         'agonal': function(sr, hr, idx) {
-            const effectiveHR = Math.min(hr, 35);
-            return ECGRhythms._wideBeat(sr, effectiveHR, {
-                rAmp: 0.4 + Math.random() * 0.3,
-                rWidth: 0.05,
-                sWidth: 0.04,
-                tAmp: -0.15,
-                tWidth: 0.08,
-            });
+            // Agonal: very slow, wide bizarre QRS — deep negative trough
+            // followed by broad positive hump. No P waves. Variable morphology.
+            const effectiveHR = Math.min(hr, 20);
+            const rr = 60.0 / effectiveHR;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            // Per-beat variation in morphology
+            const negAmp = 0.40 + Math.random() * 0.40;  // negative trough depth
+            const posAmp = 0.35 + Math.random() * 0.35;  // positive hump height
+            const negPos = 0.12 + Math.random() * 0.04;  // trough position
+            const posPos = negPos + 0.04 + Math.random() * 0.02; // hump position
+
+            for (let i = 0; i < n; i++) {
+                const t = i / n; // normalized 0..1
+                let v = 0;
+
+                // Deep negative trough (wide)
+                v += -negAmp * Math.exp(-Math.pow((t - negPos) / 0.025, 2) / 2);
+
+                // Broad positive hump (wide QRS)
+                v += posAmp * Math.exp(-Math.pow((t - posPos) / 0.030, 2) / 2);
+
+                // Tiny noise
+                v += 0.003 * (Math.random() - 0.5);
+
+                signal[i] = v;
+            }
+            return signal;
         },
 
         'pacemaker': function(sr, hr, idx) {
