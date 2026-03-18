@@ -715,6 +715,57 @@ const ECGRhythms = {
             return signal;
         },
 
+        'omi_lmca': function(sr, hr, idx) {
+            // OMI-LMCA: normal P, sharp R, deep S wave that returns to a
+            // depressed horizontal ST segment, then positive T wave.
+            const rr = 60.0 / hr;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            const stLevel = -0.20; // ST depression level
+
+            for (let i = 0; i < n; i++) {
+                const t = i / sr / rr; // normalized 0..1
+                let v = 0;
+
+                // P wave: normal, upright
+                v += 0.10 * Math.exp(-Math.pow((t - 0.18) / 0.030, 2) / 2);
+
+                // R wave: sharp
+                v += 0.70 * Math.exp(-Math.pow((t - 0.34) / 0.014, 2) / 2);
+
+                // S wave: deep, returns to depressed ST level (not baseline)
+                v += -0.50 * Math.exp(-Math.pow((t - 0.39) / 0.016, 2) / 2);
+
+                // Horizontal depressed ST segment from S upstroke into T wave
+                const stStart = 0.41;
+                const tStart = 0.54;
+                const tPeak = 0.62;
+                const tEnd = 0.72;
+
+                if (t > stStart && t <= tStart) {
+                    // Flat horizontal segment at depressed level
+                    v += stLevel;
+                } else if (t > tStart && t <= tPeak) {
+                    // Smooth concave-upward rise from depressed level into T wave
+                    const phase = (t - tStart) / (tPeak - tStart);
+                    v += stLevel + (0.18 - stLevel) * 0.5 * (1 - Math.cos(Math.PI * phase));
+                } else if (t > tPeak && t <= tEnd) {
+                    // Smooth T wave descent back to baseline
+                    const phase = (t - tPeak) / (tEnd - tPeak);
+                    v += 0.18 * 0.5 * (1 + Math.cos(Math.PI * phase));
+                }
+
+                signal[i] = v;
+            }
+
+            // Tiny noise
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.003 * (Math.random() - 0.5);
+            }
+            return signal;
+        },
+
         'wellens': function(sr, hr, idx) {
             // Normal sinus with deeply inverted/biphasic T-wave
             return ECGRhythms._normalBeat(sr, hr, {

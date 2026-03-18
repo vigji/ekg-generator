@@ -31,6 +31,7 @@
         { id: 'ventricular_standstill',  abbr: 'VS',   label: 'V Standstill',    hrDefault: 45 },
         { id: 'asystole',                abbr: 'ASY',  label: 'Asystole',        hrDefault: 72 },
         { id: 'stemi',                    abbr: 'STEMI', label: 'Inferior STEMI', hrDefault: 72 },
+        { id: 'omi_lmca',                abbr: 'OMI',  label: 'OMI–LMCA',       hrDefault: 72 },
         { id: 'tca_toxicity',            abbr: 'TCA',  label: 'TCA Toxicity',    hrDefault: 110 },
         { id: 'hyperkalemia',            abbr: 'HyK',  label: 'HyperK',          hrDefault: 40 },
         { id: 'wpw',                     abbr: 'WPW',  label: 'WPW',             hrDefault: 72 },
