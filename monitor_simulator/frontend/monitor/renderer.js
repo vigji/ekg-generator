@@ -195,6 +195,43 @@ const ECGRhythms = {
             return beat;
         },
 
+        'afib_aberrancy': function(sr, hr, idx) {
+            // AFib with aberrancy: irregularly irregular, wide QRS
+            // (small R → deep wide S → small positive T), no P waves.
+            const effectiveHR = Math.max(hr, 80);
+            const variation = 0.50 + Math.random() * 1.20;
+            const beatHR = effectiveHR * variation;
+            const rr = 60.0 / beatHR;
+            const n = Math.round(rr * sr);
+
+            // Fixed wide QRS-T template in absolute time (seconds)
+            const signal = new Float32Array(n);
+            for (let i = 0; i < n; i++) {
+                const ts = i / sr; // absolute seconds
+                let v = 0;
+
+                // Small positive R wave
+                v += 0.30 * Math.exp(-Math.pow((ts - 0.04) / 0.012, 2) / 2);
+
+                // Deep wide S wave (predominantly negative QRS)
+                v += -0.65 * Math.exp(-Math.pow((ts - 0.10) / 0.035, 2) / 2);
+
+                // Small positive T wave
+                v += 0.15 * Math.exp(-Math.pow((ts - 0.22) / 0.035, 2) / 2);
+
+                // Subtle fibrillatory baseline
+                const fPhase = idx * 23.7;
+                v += 0.008 * (
+                    Math.sin(2 * Math.PI * 4.1 * ts + fPhase) +
+                    Math.sin(2 * Math.PI * 7.1 * ts + fPhase * 1.3)
+                );
+                v += 0.004 * (Math.random() - 0.5);
+
+                signal[i] = v;
+            }
+            return signal;
+        },
+
         'atrial_flutter': function(sr, hr, idx) {
             // Atrial flutter: continuous rounded sawtooth flutter waves at 300/min
             // with narrow QRS complexes inserted at ventricular rate.

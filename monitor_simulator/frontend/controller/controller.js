@@ -14,6 +14,7 @@
         { id: 'sinus_rhythm',              abbr: 'NSR',  label: 'Sinus Rhythm',    hrDefault: 72 },
         { id: 'sinus_tachycardia',         abbr: 'ST',   label: 'Sinus Tach',      hrDefault: 100 },
         { id: 'atrial_fibrillation',       abbr: 'AFIB', label: 'A-Fib',           hrDefault: 80 },
+        { id: 'afib_aberrancy',            abbr: 'AFAb', label: 'AFib Aberr',      hrDefault: 100 },
         { id: 'atrial_flutter',            abbr: 'AFL',  label: 'A-Flutter',       hrDefault: 100 },
         { id: 'atrial_tachycardia',        abbr: 'AT',   label: 'Atrial Tach',     hrDefault: 120 },
         { id: 'psvt',                      abbr: 'PSVT', label: 'PSVT',            hrDefault: 150 },
