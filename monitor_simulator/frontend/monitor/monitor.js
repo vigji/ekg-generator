@@ -192,12 +192,16 @@
         const capnoSR = 250; // lower sample rate for capno
         const capnoSamples = Math.round(capnoSR * dt);
         while (capnoSamplesRemaining.length < capnoSamples) {
-            if (!state.respiratory_rate || state.respiratory_rate <= 0) {
-                // No respiratory rate — flatline
+            // Use default respiratory rate of 14 if etco2 is set but RR is missing
+            const effectiveRR = (state.respiratory_rate > 0)
+                ? state.respiratory_rate
+                : (state.etco2 > 0 ? 14 : 0);
+            if (effectiveRR <= 0) {
+                // No respiratory rate and no etco2 — flatline
                 const n = Math.round(capnoSR * 0.5);
                 for (let i = 0; i < n; i++) capnoSamplesRemaining.push(0);
             } else {
-                const breath = CapnoGenerator.generateBreath(capnoSR, state.respiratory_rate, state.etco2);
+                const breath = CapnoGenerator.generateBreath(capnoSR, effectiveRR, state.etco2);
                 capnoSamplesRemaining.push(...breath);
             }
         }
