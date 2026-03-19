@@ -1277,9 +1277,12 @@ const ArtLineGenerator = {
         const n = Math.round(rr * sampleRate);
         const signal = new Float32Array(n);
 
-        // Normalize: baseline at 0, peak at 1
-        const pulsePressure = systolic - diastolic;
-        const amp = pulsePressure > 0 ? 1.0 : 0;
+        // Scale waveform to reflect actual pressure values.
+        // Normalize to display range: 0 mmHg → 0, 200 mmHg → 1.0
+        const sysNorm = Math.max(systolic, 0) / 200;
+        const diaNorm = Math.max(diastolic, 0) / 200;
+        const amp = sysNorm - diaNorm > 0 ? sysNorm - diaNorm : 0;
+        const base = diaNorm;
 
         for (let i = 0; i < n; i++) {
             const t = i / n;
@@ -1302,8 +1305,8 @@ const ArtLineGenerator = {
             // Broad diastolic tail: very wide, low, fills the gap to next beat
             v += amp * 0.10 * Math.exp(-Math.pow((t - 0.55) / 0.20, 2) / 2);
 
-            // Elevated baseline (diastolic floor)
-            v += amp * 0.08;
+            // Elevated baseline (diastolic pressure level)
+            v += base;
 
             signal[i] = v;
         }
