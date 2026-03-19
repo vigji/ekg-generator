@@ -3,7 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Patient Monitor Simulator</title>
+    <title>Patient Monitor Simulator — Free ECG, SpO2 & Capnography Waveform Simulator for Clinical Education</title>
+    <meta name="description" content="Free real-time patient monitor simulator with ECG rhythms, SpO2 plethysmography, capnography, invasive arterial pressure, defibrillator, and pacing. Designed for medical education, ACLS/PALS training, and clinical simulation.">
+    <meta name="keywords" content="patient monitor simulator, ECG simulator, EKG simulator, clinical education, medical simulation, ACLS training, PALS training, cardiac rhythms, SpO2 waveform, capnography simulator, defibrillator simulator, arterial line waveform, bedside monitor, nursing education, paramedic training, emergency medicine, critical care, sinus rhythm, atrial fibrillation, ventricular tachycardia, ventricular fibrillation, STEMI, WPW, cardiac arrest, CPR training">
+    <meta name="author" content="Caterina Zattera, Luigi Petrucco">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://www.roschunters.eu/">
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Patient Monitor Simulator — Free Clinical Education Tool">
+    <meta property="og:description" content="Real-time ECG, SpO2, capnography, and arterial pressure waveform simulator. 30+ cardiac rhythms, defibrillator, pacing, and SYNC mode. Free and open source.">
+    <meta property="og:url" content="https://www.roschunters.eu/">
+    <meta property="og:site_name" content="Patient Monitor Simulator">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Patient Monitor Simulator — Free ECG & Waveform Simulator">
+    <meta name="twitter:description" content="Real-time patient monitor simulator for clinical education. 30+ ECG rhythms, SpO2, capnography, arterial line, defibrillator, and pacing.">
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Patient Monitor Simulator",
+        "url": "https://www.roschunters.eu/",
+        "description": "Free real-time patient monitor simulator with ECG, SpO2, capnography, and invasive arterial pressure waveforms for clinical education and medical simulation training.",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Any (web browser)",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "author": [
+            { "@type": "Person", "name": "Caterina Zattera", "affiliation": "Ospedale Santa Maria del Carmine, Rovereto" },
+            { "@type": "Person", "name": "Luigi Petrucco" }
+        ],
+        "license": "https://github.com/vigji/ekg-generator/blob/main/LICENSE"
+    }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         html, body {
@@ -78,13 +114,28 @@
             font-size: 11px;
             color: #445566;
         }
+        .features {
+            margin-top: 32px;
+            text-align: left;
+        }
+        .features h2 {
+            font-size: 16px;
+            color: #8899aa;
+            margin-bottom: 10px;
+        }
+        .features ul {
+            font-size: 12px;
+            color: #556677;
+            line-height: 1.8;
+            padding-left: 20px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Patient Monitor Simulator</h1>
         <p class="subtitle">
-            Real-time ECG, SpO2, and capnography waveform simulator for clinical education.
+            Free real-time ECG, SpO2, capnography, and invasive arterial pressure waveform simulator for clinical education, ACLS/PALS training, and medical simulation.
         </p>
         <div class="links">
             <a href="controller/index.html" class="btn btn-controller" target="_blank">Open Controller</a>
@@ -96,6 +147,21 @@
             <p>2. Click <strong>Open Monitor</strong> to display the patient monitor.</p>
             <p>3. Drag the monitor window to a projector or second screen and go fullscreen (click the monitor).</p>
             <p style="margin-top: 12px;"><strong>Note:</strong> Both windows must be open on the same device and browser. Changes on the controller appear instantly on the monitor.</p>
+        </div>
+        <div class="features">
+            <h2>Features</h2>
+            <ul>
+                <li>30+ ECG rhythms: Sinus, AFib, A-Flutter, SVT, VT, VF, Asystole, STEMI, WPW, TCA toxicity, Hyperkalemia, and more</li>
+                <li>Real-time SpO2 plethysmography waveform</li>
+                <li>Capnography (ETCO2) waveform</li>
+                <li>Invasive arterial pressure (ART line) waveform</li>
+                <li>Defibrillator with charge and discharge sounds</li>
+                <li>Cardiac pacing with adjustable rate and current</li>
+                <li>SYNC cardioversion mode with R-wave markers</li>
+                <li>Adjustable heart rate, blood pressure, SpO2, and ETCO2</li>
+                <li>No installation needed — runs entirely in the browser</li>
+                <li>Free and open source</li>
+            </ul>
         </div>
         <div class="footer">
             <p>
