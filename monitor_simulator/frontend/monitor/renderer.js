@@ -1278,11 +1278,11 @@ const ArtLineGenerator = {
         const signal = new Float32Array(n);
 
         // Scale waveform to reflect actual pressure values.
-        // Normalize to display range: 0 mmHg → 0, 200 mmHg → 1.0
-        const sysNorm = Math.max(systolic, 0) / 200;
-        const diaNorm = Math.max(diastolic, 0) / 200;
-        const amp = sysNorm - diaNorm > 0 ? sysNorm - diaNorm : 0;
-        const base = diaNorm;
+        // Reference: pulse pressure of 40 mmHg (e.g. 120/80) → amp = 1.0
+        const pulsePressure = Math.max(systolic - diastolic, 0);
+        const amp = pulsePressure / 40;
+        // Diastolic baseline: 80 mmHg → 0.08 (subtle offset)
+        const base = Math.max(diastolic, 0) / 1000;
 
         for (let i = 0; i < n; i++) {
             const t = i / n;
