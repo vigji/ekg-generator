@@ -254,7 +254,9 @@
         spo2Renderer.render(-0.1, 1.2);
         capnoRenderer.render(-0.1, 1.2);
         if (state.art_mode) {
-            artRenderer.render(-0.1, 1.1);
+            // Dynamic Y range based on systolic pressure (higher BP = taller)
+            const artYMax = Math.max(state.systolic / 150, 0.5);
+            artRenderer.render(-0.05, artYMax);
         }
 
         requestAnimationFrame(animate);
@@ -267,6 +269,8 @@
 
         const oldRhythm = state.rhythm;
         const oldHR = state.heart_rate;
+        const oldSys = state.systolic;
+        const oldDia = state.diastolic;
         const oldSync = state.sync_mode;
         const oldArt = state.art_mode;
         const oldPacing = state.pacing_mode;
@@ -281,8 +285,8 @@
             artSysEl.textContent = state.systolic || '---';
             artDiaEl.textContent = state.diastolic || '---';
         }
-        // Flush ART buffer when ART mode changes
-        if (state.art_mode !== oldArt) {
+        // Flush ART buffer when ART mode or BP changes
+        if (state.art_mode !== oldArt || state.systolic !== oldSys || state.diastolic !== oldDia) {
             artSamplesRemaining = [];
         }
 
