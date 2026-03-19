@@ -53,6 +53,25 @@
             </div>
         </div>
 
+        <!-- Arterial Line Row (hidden by default, shown when ART mode on) -->
+        <div class="waveform-row" id="art-row" style="display: none;">
+            <div class="waveform-label">
+                <span class="label-text art-color">ART</span>
+            </div>
+            <div class="waveform-canvas-wrap" style="margin-right: 20px;">
+                <canvas id="art-canvas"></canvas>
+            </div>
+            <div class="vitals-panel" style="width: 170px;">
+                <span class="vital-label art-color">ART</span>
+                <div class="bp-values">
+                    <span class="bp-main art-color" id="art-sys">---</span>
+                    <span class="bp-slash art-color">/</span>
+                    <span class="bp-main art-color" id="art-dia">---</span>
+                </div>
+                <span class="vital-unit art-color">mmHg</span>
+            </div>
+        </div>
+
         <!-- Blood Pressure Row (numeric only) -->
         <div class="bp-row">
             <div class="bp-panel">

@@ -21,6 +21,7 @@ const MonitorChannel = (function () {
         etco2: 0,
         respiratory_rate: 0,
         sync_mode: false,
+        art_mode: false,
         pacing_mode: false,
         pacing_rate: 70,
         pacing_current: 70,

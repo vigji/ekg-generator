@@ -79,6 +79,7 @@
     const pacingRateDisplay = document.getElementById('pacing-rate-display');
     const pacingCurrentSlider = document.getElementById('pacing-current-slider');
     const pacingCurrentDisplay = document.getElementById('pacing-current-display');
+    const artBtn = document.getElementById('art-btn');
     const resetBtn = document.getElementById('reset-btn');
 
     const sliders = {
@@ -185,6 +186,15 @@
         syncBtn.classList.toggle('active', active);
     }
 
+    // --- ART toggle ---
+    artBtn.addEventListener('click', () => {
+        sendUpdate({ art_mode: !currentState.art_mode });
+    });
+
+    function updateArtButton(active) {
+        artBtn.classList.toggle('active', active);
+    }
+
     // --- PACING toggle ---
     pacingBtn.addEventListener('click', () => {
         sendUpdate({ pacing_mode: !currentState.pacing_mode });
@@ -245,6 +255,7 @@
         updateRhythmHighlight(state.rhythm);
         updateSlidersFromState(state);
         updateSyncButton(state.sync_mode);
+        updateArtButton(state.art_mode);
         updatePacingUI(state);
     }
 

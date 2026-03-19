@@ -152,7 +152,7 @@ html, body {
     align-items: stretch;
 }
 
-.sync-btn, .pacing-btn {
+.sync-btn, .pacing-btn, .art-btn {
     background: #1a2236;
     border: 1px solid #263050;
     border-radius: 8px;
@@ -166,7 +166,7 @@ html, body {
     text-align: center;
 }
 
-.sync-btn:hover, .pacing-btn:hover {
+.sync-btn:hover, .pacing-btn:hover, .art-btn:hover {
     border-color: #3b6db5;
     color: #b0c0d0;
 }
@@ -180,6 +180,12 @@ html, body {
 .pacing-btn.active {
     background: #1565c0;
     border-color: #42a5f5;
+    color: #fff;
+}
+
+.art-btn.active {
+    background: #b34700;
+    border-color: #ff6622;
     color: #fff;
 }
 

@@ -1259,6 +1259,60 @@ const CapnoGenerator = {
 
 
 // ============================================================
+// Arterial Line Waveform
+// ============================================================
+
+const ArtLineGenerator = {
+    /**
+     * Generate one pulse cycle of arterial line waveform.
+     * Sharp systolic upstroke, dicrotic notch, gradual diastolic decline.
+     * @param {number} sampleRate
+     * @param {number} heartRate
+     * @param {number} systolic - systolic BP (affects peak height)
+     * @param {number} diastolic - diastolic BP (affects baseline)
+     * @returns {number[]}
+     */
+    generatePulse(sampleRate, heartRate, systolic, diastolic) {
+        const rr = 60.0 / heartRate;
+        const n = Math.round(rr * sampleRate);
+        const signal = new Float32Array(n);
+
+        // Normalize: baseline at 0, peak at 1
+        const pulsePressure = systolic - diastolic;
+        const amp = pulsePressure > 0 ? 1.0 : 0;
+
+        for (let i = 0; i < n; i++) {
+            const t = i / n;
+            let v = 0;
+
+            // Arterial waveform: two overlapping rounded humps
+            // (systolic + dicrotic) on an elevated baseline,
+            // creating a smooth continuous dicrotic waveform.
+
+            // Systolic hump: tall, wide, rounded
+            v += amp * 0.65 * Math.exp(-Math.pow((t - 0.12) / 0.07, 2) / 2);
+
+            // Dicrotic hump: shorter, wider on the right for gentle descent
+            const dtDic = t - 0.32;
+            const wDicUp = 0.06;
+            const wDicDown = 0.12;
+            const wDic = dtDic < 0 ? wDicUp : wDicDown;
+            v += amp * 0.28 * Math.exp(-Math.pow(dtDic / wDic, 2) / 2);
+
+            // Broad diastolic tail: very wide, low, fills the gap to next beat
+            v += amp * 0.10 * Math.exp(-Math.pow((t - 0.55) / 0.20, 2) / 2);
+
+            // Elevated baseline (diastolic floor)
+            v += amp * 0.08;
+
+            signal[i] = v;
+        }
+        return signal;
+    }
+};
+
+
+// ============================================================
 // Sweep-Line Canvas Renderer
 // ============================================================
 

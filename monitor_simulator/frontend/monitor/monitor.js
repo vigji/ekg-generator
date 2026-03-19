@@ -37,6 +37,9 @@
     const capnoRenderer = new WaveformRenderer(
         document.getElementById('capno-canvas'), '#ffdd00', 100
     );
+    const artRenderer = new WaveformRenderer(
+        document.getElementById('art-canvas'), '#ff6622', 200
+    );
 
     // --- Waveform generation state ---
     const SAMPLE_RATE = 500;
@@ -45,6 +48,7 @@
     let ecgRPeakPositions = []; // absolute sample indices of R-peaks within ecgSamplesRemaining
     let plethSamplesRemaining = [];
     let capnoSamplesRemaining = [];
+    let artSamplesRemaining = [];
 
     // --- DOM elements ---
     const hrValue = document.getElementById('hr-value');
@@ -52,6 +56,9 @@
     const etco2Value = document.getElementById('etco2-value');
     const bpSys = document.getElementById('bp-sys');
     const bpDia = document.getElementById('bp-dia');
+    const artRow = document.getElementById('art-row');
+    const artSysEl = document.getElementById('art-sys');
+    const artDiaEl = document.getElementById('art-dia');
 
     // --- Update numeric displays ---
     function updateNumerics() {
@@ -145,6 +152,16 @@
             }
 
             ecgSamplesRemaining.push(...beat);
+
+            // Generate ART pulse in sync with this ECG beat (same length)
+            if (state.art_mode && state.systolic > 0 && state.heart_rate > 0) {
+                const artBeatLen = beat.length;
+                const artHR = 60.0 / (artBeatLen / SAMPLE_RATE);
+                const artPulse = ArtLineGenerator.generatePulse(
+                    SAMPLE_RATE, artHR, state.systolic, state.diastolic
+                );
+                artSamplesRemaining.push(...artPulse);
+            }
         }
         const ecgChunk = new Float32Array(ecgSamplesRemaining.splice(0, samplesToGenerate));
 
@@ -207,6 +224,20 @@
         }
         const capnoChunk = new Float32Array(capnoSamplesRemaining.splice(0, capnoSamples));
         capnoRenderer.pushSamples(capnoChunk, capnoSR);
+
+        // --- Arterial Line ---
+        if (state.art_mode) {
+            // ART pulses are generated in sync with ECG beats above.
+            // If no pulse data (no HR or no BP), generate flatline.
+            if (artSamplesRemaining.length < samplesToGenerate) {
+                const deficit = samplesToGenerate - artSamplesRemaining.length;
+                for (let i = 0; i < deficit; i++) {
+                    artSamplesRemaining.push(0.002 * (Math.random() - 0.5));
+                }
+            }
+            const artChunk = new Float32Array(artSamplesRemaining.splice(0, samplesToGenerate));
+            artRenderer.pushSamples(artChunk, SAMPLE_RATE);
+        }
     }
 
     // --- Animation loop ---
@@ -222,6 +253,9 @@
         ecgRenderer.render(-0.6, ecgYMax);
         spo2Renderer.render(-0.1, 1.2);
         capnoRenderer.render(-0.1, 1.2);
+        if (state.art_mode) {
+            artRenderer.render(-0.1, 1.1);
+        }
 
         requestAnimationFrame(animate);
     }
@@ -234,11 +268,23 @@
         const oldRhythm = state.rhythm;
         const oldHR = state.heart_rate;
         const oldSync = state.sync_mode;
+        const oldArt = state.art_mode;
         const oldPacing = state.pacing_mode;
         const oldPacingRate = state.pacing_rate;
         const oldPacingCurrent = state.pacing_current;
         Object.assign(state, newState);
         updateNumerics();
+
+        // Show/hide ART row
+        artRow.style.display = state.art_mode ? '' : 'none';
+        if (state.art_mode) {
+            artSysEl.textContent = state.systolic || '---';
+            artDiaEl.textContent = state.diastolic || '---';
+        }
+        // Flush ART buffer when ART mode changes
+        if (state.art_mode !== oldArt) {
+            artSamplesRemaining = [];
+        }
 
         // Clear SYNC markers when SYNC is turned off
         if (oldSync && !state.sync_mode) {
@@ -254,6 +300,7 @@
             ecgRPeakPositions = [];
             plethSamplesRemaining = [];
             capnoSamplesRemaining = [];
+            artSamplesRemaining = [];
             ecgBeatIndex = 0;
         }
     });
