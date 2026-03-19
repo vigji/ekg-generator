@@ -11,6 +11,7 @@
     // --- Rhythm definitions (with abbreviations and default HR for auto-set) ---
     const RHYTHMS = [
         { id: 'standby',                   abbr: '—',    label: 'Standby',         hrDefault: 0 },
+        { id: 'cpr',                       abbr: 'CPR',  label: 'CPR',             hrDefault: 110 },
         { id: 'sinus_rhythm',              abbr: 'NSR',  label: 'Sinus Rhythm',    hrDefault: 72 },
         { id: 'sinus_tachycardia',         abbr: 'ST',   label: 'Sinus Tach',      hrDefault: 100 },
         { id: 'atrial_fibrillation',       abbr: 'AFIB', label: 'A-Fib',           hrDefault: 80 },
@@ -103,7 +104,7 @@
 
     // Pulseless rhythms: no cardiac output → BP reads 0
     const PULSELESS_RHYTHMS = new Set([
-        'standby', 'ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole', 'vt_polymorphic', 'agonal',
+        'standby', 'cpr', 'ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole', 'vt_polymorphic', 'agonal',
     ]);
 
     function selectRhythm(rhythmId) {

@@ -650,6 +650,39 @@ const ECGRhythms = {
             return signal;
         },
 
+        'cpr': function(sr, hr, idx) {
+            // CPR artifact: compression humps with distinct sharp notches.
+            const effectiveHR = Math.max(hr, 100);
+            const rr = 60.0 / effectiveHR;
+            const n = Math.round(rr * sr);
+            const signal = new Float32Array(n);
+
+            // Persistent phase for continuous artifacts across beats
+            if (!ECGRhythms._cprPhase) ECGRhythms._cprPhase = 0;
+
+            for (let i = 0; i < n; i++) {
+                const t = i / n;
+                const ts = ECGRhythms._cprPhase;
+                let v = 0;
+
+                // Compression hump base
+                const phase = 2 * Math.PI * t;
+                v += 0.35 * (Math.sin(phase) + 0.20 * Math.sin(2 * phase));
+
+                // Distinct sharp notches: ~4-5 per cycle at medium frequency
+                v += 0.08 * Math.sin(2 * Math.PI * 5.5 * ts + idx * 5.3);
+                v += 0.06 * Math.sin(2 * Math.PI * 9.2 * ts + idx * 3.7);
+                v += 0.04 * Math.sin(2 * Math.PI * 3.1 * ts + idx * 7.9);
+
+                // Tiny jitter
+                v += 0.008 * (Math.random() - 0.5);
+
+                signal[i] = v;
+                ECGRhythms._cprPhase += 1 / sr;
+            }
+            return signal;
+        },
+
         'standby': function(sr, hr, idx) {
             const n = Math.round(sr * 1.5);
             const signal = new Float32Array(n);
@@ -1113,7 +1146,7 @@ const ECGRhythms = {
      * Returns true if the rhythm supports SYNC markers (has identifiable R waves).
      */
     supportsSyncMarker(rhythm) {
-        const noSync = ['standby', 'ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole'];
+        const noSync = ['standby', 'cpr', 'ventricular_fibrillation', 'fine_vf', 'ventricular_standstill', 'asystole'];
         return !noSync.includes(rhythm);
     },
 
