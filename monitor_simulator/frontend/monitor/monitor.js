@@ -254,7 +254,10 @@
         spo2Renderer.render(-0.1, 1.2);
         capnoRenderer.render(-0.1, 1.2);
         if (state.art_mode) {
-            artRenderer.render(-0.1, 1.1);
+            // Scale Y range with pulse pressure so waveform never clips
+            const pp = Math.max(state.systolic - state.diastolic, 40);
+            const yMax = Math.max((pp / 40) * 1.1, 1.1);
+            artRenderer.render(-0.1, yMax);
         }
 
         requestAnimationFrame(animate);
