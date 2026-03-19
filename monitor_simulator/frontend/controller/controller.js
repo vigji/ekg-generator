@@ -57,17 +57,20 @@
 
     // --- Channel ---
     const channel = MonitorChannel.create();
-    let currentState = channel.loadState();
-
-    // Enforce standby zeros (localStorage may have stale vitals)
-    if (currentState.rhythm === 'standby') {
-        currentState.heart_rate = 0;
-        currentState.systolic = 0;
-        currentState.diastolic = 0;
-        currentState.spo2 = 0;
-        currentState.etco2 = 0;
-        currentState.respiratory_rate = 0;
-    }
+    // Always start in Standby with zeroed vitals on fresh open
+    let currentState = {
+        ...channel.loadState(),
+        rhythm: 'standby',
+        heart_rate: 0,
+        systolic: 0,
+        diastolic: 0,
+        spo2: 0,
+        etco2: 0,
+        respiratory_rate: 0,
+        sync_mode: false,
+        art_mode: false,
+        pacing_mode: false,
+    };
 
     // --- DOM refs ---
     const connStatus = document.getElementById('conn-status');
