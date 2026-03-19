@@ -80,6 +80,8 @@
     const pacingCurrentSlider = document.getElementById('pacing-current-slider');
     const pacingCurrentDisplay = document.getElementById('pacing-current-display');
     const artBtn = document.getElementById('art-btn');
+    const defibChargeBtn = document.getElementById('defib-charge-btn');
+    const defibShockBtn = document.getElementById('defib-shock-btn');
     const resetBtn = document.getElementById('reset-btn');
 
     const sliders = {
@@ -194,6 +196,59 @@
     function updateArtButton(active) {
         artBtn.classList.toggle('active', active);
     }
+
+    // --- Defibrillator ---
+    let defibCharged = false;
+    const chargeSound = new Audio('sounds/charge.m4a');
+    chargeSound.loop = true;
+
+    // Generate discharge sound using Web Audio API
+    function playDischargeSound() {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const duration = 0.3;
+        const bufferSize = ctx.sampleRate * duration;
+        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            const t = i / ctx.sampleRate;
+            // Sharp crack followed by rapid decay
+            const env = Math.exp(-t * 15);
+            data[i] = env * (Math.random() * 2 - 1) * 0.8;
+            // Add a low thump
+            data[i] += env * 0.5 * Math.sin(2 * Math.PI * 60 * t);
+        }
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start();
+        source.onended = () => ctx.close();
+    }
+
+    defibChargeBtn.addEventListener('click', () => {
+        if (defibCharged) {
+            // Deactivate charge
+            defibCharged = false;
+            defibChargeBtn.classList.remove('active');
+            chargeSound.pause();
+            chargeSound.currentTime = 0;
+        } else {
+            // Activate charge
+            defibCharged = true;
+            defibChargeBtn.classList.add('active');
+            chargeSound.play().catch(() => {});
+        }
+    });
+
+    defibShockBtn.addEventListener('click', () => {
+        if (defibCharged) {
+            // Discharge: stop charge, play shock sound
+            defibCharged = false;
+            defibChargeBtn.classList.remove('active');
+            chargeSound.pause();
+            chargeSound.currentTime = 0;
+            playDischargeSound();
+        }
+    });
 
     // --- PACING toggle ---
     pacingBtn.addEventListener('click', () => {

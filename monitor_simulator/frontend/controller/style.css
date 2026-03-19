@@ -189,6 +189,73 @@ html, body {
     color: #fff;
 }
 
+/* --- Defibrillator Controls --- */
+
+.defib-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.defib-charge-btn {
+    background: #c8a000;
+    border: 2px solid #e0b800;
+    border-radius: 10px;
+    padding: 10px 24px;
+    color: #1a1a1a;
+    font-size: 14px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.defib-charge-btn:hover {
+    background: #dab800;
+    border-color: #f0d000;
+}
+
+.defib-charge-btn.active {
+    background: #e8c800;
+    border-color: #ffd700;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.5);
+    animation: charge-pulse 0.8s ease-in-out infinite;
+}
+
+@keyframes charge-pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 215, 0, 0.4); }
+    50% { box-shadow: 0 0 18px rgba(255, 215, 0, 0.8); }
+}
+
+.defib-shock-btn {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #cc3300;
+    border: 3px solid #e84400;
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.defib-shock-btn:hover {
+    background: #e84400;
+    border-color: #ff5500;
+}
+
+.defib-shock-btn:active {
+    background: #ff5500;
+    transform: scale(0.95);
+}
+
 /* --- Pacing Controls --- */
 
 .pacing-controls {
