@@ -195,6 +195,77 @@ const ECGRhythms = {
             return beat;
         },
 
+        'brady_tachy': function(sr, hr, idx) {
+            // Brady-Tachy syndrome: bursts of fast AFib-like beats
+            // alternating with long pauses.
+
+            // Persistent state across calls
+            const s = ECGRhythms._btState || (ECGRhythms._btState = {
+                phase: 'tachy',   // 'tachy' or 'pause'
+                beatsInPhase: 0,
+                tachyLen: 10,     // beats in current tachy burst
+                pauseLen: 0,      // pause beats remaining
+            });
+
+            if (s.phase === 'pause') {
+                s.pauseLen--;
+                if (s.pauseLen <= 0) {
+                    s.phase = 'tachy';
+                    s.beatsInPhase = 0;
+                    s.tachyLen = 8 + Math.floor(Math.random() * 10); // 8-17 beats
+                }
+                // Return flat baseline (~2 seconds of silence)
+                const n = Math.round(sr * 2.0);
+                const signal = new Float32Array(n);
+                for (let i = 0; i < n; i++) {
+                    signal[i] = 0.003 * (Math.random() - 0.5);
+                }
+                return signal;
+            }
+
+            // Tachy phase: fast AFib-like beats
+            s.beatsInPhase++;
+            if (s.beatsInPhase >= s.tachyLen) {
+                s.phase = 'pause';
+                s.pauseLen = 1 + Math.floor(Math.random() * 2); // 1-2 pause chunks
+            }
+
+            // Generate AFib-like beat at fast rate
+            const fastHR = 120 + Math.random() * 60; // 120-180 bpm
+            const variation = 0.70 + Math.random() * 0.60;
+            const beatHR = fastHR * variation;
+            const rr = 60.0 / beatHR;
+            const n = Math.round(rr * sr);
+
+            // Fixed narrow QRS-T template
+            const refHR = 170;
+            const refBeat = ECGRhythms._normalBeat(sr, refHR, {
+                pAmp: 0,
+                qAmp: -0.08,
+                qPos: 0.18,
+                qWidth: 0.008,
+                rAmp: 1.0,
+                rPos: 0.21,
+                rWidth: 0.012,
+                sAmp: -0.18,
+                sPos: 0.24,
+                sWidth: 0.010,
+                tAmp: 0.22,
+                tPos: 0.44,
+                tWidth: 0.070,
+            });
+
+            const signal = new Float32Array(n);
+            const copyLen = Math.min(refBeat.length, n);
+            for (let i = 0; i < copyLen; i++) signal[i] = refBeat[i];
+
+            // Subtle noise on baseline
+            for (let i = 0; i < n; i++) {
+                signal[i] += 0.004 * (Math.random() - 0.5);
+            }
+            return signal;
+        },
+
         'afib_aberrancy': function(sr, hr, idx) {
             // AFib with aberrancy: irregularly irregular, wide QRS
             // (small R → deep wide S → small positive T), no P waves.
@@ -210,8 +281,8 @@ const ECGRhythms = {
                 const ts = i / sr; // absolute seconds
                 let v = 0;
 
-                // Small positive R wave
-                v += 0.30 * Math.exp(-Math.pow((ts - 0.04) / 0.012, 2) / 2);
+                // Positive R wave (well above 0.3 threshold for SYNC detection)
+                v += 0.55 * Math.exp(-Math.pow((ts - 0.04) / 0.012, 2) / 2);
 
                 // Deep wide S wave (predominantly negative QRS)
                 v += -0.65 * Math.exp(-Math.pow((ts - 0.10) / 0.035, 2) / 2);
