@@ -18,7 +18,7 @@
         { id: 'brady_tachy',               abbr: 'BrTa', label: 'Brady-Tachy',     hrDefault: 80 },
         { id: 'atrial_flutter',            abbr: 'AFL',  label: 'A-Flutter',       hrDefault: 100 },
         { id: 'atrial_tachycardia',        abbr: 'AT',   label: 'Atrial Tach',     hrDefault: 120 },
-        { id: 'psvt',                      abbr: 'PSVT', label: 'PSVT',            hrDefault: 150 },
+        { id: 'psvt',                      abbr: 'SVT',  label: 'SVT',             hrDefault: 150 },
         { id: 'junctional',               abbr: 'JR',   label: 'Junctional',      hrDefault: 45 },
         { id: 'av_block_1',               abbr: '1HB',  label: 'AV Block I',      hrDefault: 72 },
         { id: 'av_block_2_mobitz1',       abbr: 'M1',   label: 'Mobitz I',        hrDefault: 55 },

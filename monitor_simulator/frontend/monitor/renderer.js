@@ -360,17 +360,35 @@ const ECGRhythms = {
         },
 
         'psvt': function(sr, hr, idx) {
+            // SVT: fast regular narrow-complex tachycardia. No P waves,
+            // narrow QRS, S returns to baseline, flat ST, positive T.
             const effectiveHR = Math.max(hr, 150);
-            // Slightly reduced amplitudes at high rates
-            const rateFactor = Math.min(1, 180 / effectiveHR);
-            return ECGRhythms._normalBeat(sr, effectiveHR, {
-                pAmp: -0.03,  // tiny retrograde P buried in ST
-                pPos: 0.44,
-                pWidth: 0.02,
-                rAmp: 0.85 * rateFactor + 0.15,
-                rWidth: 0.014,
-                tAmp: 0.18 * rateFactor + 0.05,
-            });
+            const rr = 60.0 / effectiveHR;
+            const n = Math.round(rr * sr);
+
+            // Fixed QRS-T template in absolute time for consistent morphology
+            const signal = new Float32Array(n);
+            for (let i = 0; i < n; i++) {
+                const ts = i / sr;
+                let v = 0;
+
+                // No P wave
+
+                // Very narrow QRS: sharp R wave
+                v += 1.0 * Math.exp(-Math.pow((ts - 0.04) / 0.008, 2) / 2);
+
+                // S wave: returns to baseline
+                v += -0.18 * Math.exp(-Math.pow((ts - 0.06) / 0.007, 2) / 2);
+
+                // Positive T wave (after flat ST segment)
+                v += 0.22 * Math.exp(-Math.pow((ts - 0.20) / 0.040, 2) / 2);
+
+                // Tiny noise
+                v += 0.003 * (Math.random() - 0.5);
+
+                signal[i] = v;
+            }
+            return signal;
         },
 
         'junctional': function(sr, hr, idx) {
