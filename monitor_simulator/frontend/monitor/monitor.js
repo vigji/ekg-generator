@@ -254,9 +254,7 @@
         spo2Renderer.render(-0.1, 1.2);
         capnoRenderer.render(-0.1, 1.2);
         if (state.art_mode) {
-            // Dynamic Y range based on systolic pressure (higher BP = taller)
-            const artYMax = Math.max(state.systolic / 150, 0.5);
-            artRenderer.render(-0.05, artYMax);
+            artRenderer.render(-0.1, 1.1);
         }
 
         requestAnimationFrame(animate);
