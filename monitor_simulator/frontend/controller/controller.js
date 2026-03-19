@@ -151,6 +151,18 @@
                 sendUpdate({ [key]: val });
             });
         }
+        // Zero buttons for vitals sliders
+        const zeroMap = {
+            'zero-sys': 'systolic',
+            'zero-dia': 'diastolic',
+            'zero-spo2': 'spo2',
+            'zero-etco2': 'etco2',
+        };
+        for (const [btnId, key] of Object.entries(zeroMap)) {
+            document.getElementById(btnId).addEventListener('click', () => {
+                sendUpdate({ [key]: 0 });
+            });
+        }
     }
 
     function buildScales() {
@@ -241,12 +253,15 @@
 
     defibShockBtn.addEventListener('click', () => {
         if (defibCharged) {
-            // Discharge: stop charge, play shock sound
+            // Discharge: stop charge, deactivate SYNC, play shock sound
             defibCharged = false;
             defibChargeBtn.classList.remove('active');
             chargeSound.pause();
             chargeSound.currentTime = 0;
             playDischargeSound();
+            if (currentState.sync_mode) {
+                sendUpdate({ sync_mode: false });
+            }
         }
     });
 
