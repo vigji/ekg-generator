@@ -68,6 +68,76 @@ const ECGRhythms = {
     },
 
     /**
+     * Sinus beat with fixed absolute timing for P, PR, QRS.
+     * T wave adapts to HR (QT shortens at higher rates).
+     * Used by sinus_rhythm and sinus_tachycardia.
+     */
+    _sinusBeat(sampleRate, heartRate, params = {}) {
+        const rr = 60.0 / heartRate;
+        const n = Math.round(rr * sampleRate);
+        const signal = new Float32Array(n);
+
+        // Fixed positions in absolute time (seconds)
+        const pAmp   = params.pAmp ?? 0.12;
+        const pPos   = 0.10;       // P wave peak at 100ms
+        const pWidth = 0.028;      // P wave ~56ms wide
+
+        const qAmp   = params.qAmp ?? -0.10;
+        const qPos   = 0.19;       // Q wave
+        const qWidth = 0.005;      // narrow Q
+
+        const rAmp   = params.rAmp ?? 1.0;
+        const rPos   = 0.20;       // R peak at 200ms
+        const rWidth = 0.007;      // narrow R
+
+        const sAmp   = params.sAmp ?? -0.20;
+        const sPos   = 0.22;       // S wave
+        const sWidth = 0.005;      // narrow S — returns cleanly to baseline
+
+        // T wave: position adapts so QT shortens at higher HR
+        const sEnd      = 0.23;    // S wave return to baseline
+        const available = Math.max(0.04, rr - sEnd);
+        const tAmp      = params.tAmp ?? 0.25;
+        const tPos      = sEnd + Math.min(0.18, available * 0.45);
+        const tWidth    = Math.min(0.045, Math.max(0.015, Math.min(available * 0.25, Math.max(0.012, (rr - tPos) / 2.5))));
+
+        // Windowed Gaussians: offset-subtracted so they reach exactly zero at edges.
+        // g(x) = (exp(-x²/2) - exp(-k²/2)) / (1 - exp(-k²/2)), clamped to 0
+        const K = 2.5;
+        const gOff = Math.exp(-K * K / 2); // value at cutoff (~0.044)
+        const gNorm = 1 / (1 - gOff);
+
+        const pStart = pPos - K * pWidth;
+        const pEnd   = pPos + K * pWidth;
+        const tEnd   = Math.min(rr, tPos + K * tWidth);
+
+        for (let i = 0; i < n; i++) {
+            const t = i / sampleRate; // absolute time in seconds
+            let v = 0;
+
+            // P wave: offset-subtracted Gaussian, exactly zero at edges
+            if (t >= pStart && t <= pEnd) {
+                const g = Math.exp(-Math.pow((t - pPos) / pWidth, 2) / 2);
+                v += pAmp * Math.max(0, (g - gOff) * gNorm);
+            }
+
+            // QRS: narrow Gaussians (negligible tails)
+            v += qAmp * Math.exp(-Math.pow((t - qPos) / qWidth, 2) / 2);
+            v += rAmp * Math.exp(-Math.pow((t - rPos) / rWidth, 2) / 2);
+            v += sAmp * Math.exp(-Math.pow((t - sPos) / sWidth, 2) / 2);
+
+            // T wave: offset-subtracted Gaussian, exactly zero at edges
+            if (t >= sEnd && t <= tEnd) {
+                const g = Math.exp(-Math.pow((t - tPos) / tWidth, 2) / 2);
+                v += tAmp * Math.max(0, (g - gOff) * gNorm);
+            }
+
+            signal[i] = v;
+        }
+        return signal;
+    },
+
+    /**
      * Parametric ECG beat using Gaussian peaks for P, Q, R, S, T waves.
      */
     _normalBeat(sampleRate, heartRate, params = {}) {
@@ -75,23 +145,23 @@ const ECGRhythms = {
         const n = Math.round(rr * sampleRate);
         const signal = new Float32Array(n);
 
-        // Default PQRST parameters
+        // Default PQRST parameters (normalized time, calibrated for 75 bpm / rr=0.8s)
         const p = {
             pAmp: params.pAmp ?? 0.12,
             pPos: params.pPos ?? 0.22,
             pWidth: params.pWidth ?? 0.04,
             qAmp: params.qAmp ?? -0.10,
             qPos: params.qPos ?? 0.34,
-            qWidth: params.qWidth ?? 0.012,
+            qWidth: params.qWidth ?? 0.008,
             rAmp: params.rAmp ?? 1.0,
             rPos: params.rPos ?? 0.37,
-            rWidth: params.rWidth ?? 0.016,
+            rWidth: params.rWidth ?? 0.010,
             sAmp: params.sAmp ?? -0.20,
             sPos: params.sPos ?? 0.40,
-            sWidth: params.sWidth ?? 0.016,
+            sWidth: params.sWidth ?? 0.008,
             tAmp: params.tAmp ?? 0.25,
-            tPos: params.tPos ?? 0.55,
-            tWidth: params.tWidth ?? 0.06,
+            tPos: params.tPos ?? 0.62,
+            tWidth: params.tWidth ?? 0.055,
             stElev: params.stElev ?? 0.0,
         };
 
@@ -137,11 +207,11 @@ const ECGRhythms = {
 
     _rhythmHandlers: {
         'sinus_rhythm': function(sr, hr, idx) {
-            return ECGRhythms._normalBeat(sr, hr);
+            return ECGRhythms._sinusBeat(sr, hr);
         },
 
         'sinus_tachycardia': function(sr, hr, idx) {
-            return ECGRhythms._normalBeat(sr, hr, {
+            return ECGRhythms._sinusBeat(sr, hr, {
                 pAmp: 0.15,
                 tAmp: 0.20,
             });
