@@ -1179,7 +1179,8 @@ const PlethGenerator = {
         const signal = new Float32Array(n);
 
         // Amplitude scales with SpO2 (lower SpO2 → smaller, noisier pulse)
-        const ampScale = (spo2 - 40) / 60; // 0 at spo2=40, 1 at spo2=100
+        // Clamp to minimum 0.15 so waveform stays visible even at very low SpO2
+        const ampScale = Math.max(0.15, (spo2 - 40) / 60);
 
         for (let i = 0; i < n; i++) {
             const t = i / n;
