@@ -148,11 +148,20 @@
     // --- Slider event handlers ---
     function setupSliders() {
         for (const [key, { slider, display }] of Object.entries(sliders)) {
+            // Update display label live while dragging
             slider.addEventListener('input', () => {
-                const val = parseInt(slider.value);
-                display.textContent = val;
-                sendUpdate({ [key]: val });
+                display.textContent = parseInt(slider.value);
+                // Send non-HR vitals immediately (they don't cause waveform artifacts)
+                if (key !== 'heart_rate') {
+                    sendUpdate({ [key]: parseInt(slider.value) });
+                }
             });
+            // For heart rate, only send update on release to avoid ECG artifacts
+            if (key === 'heart_rate') {
+                slider.addEventListener('change', () => {
+                    sendUpdate({ heart_rate: parseInt(slider.value) });
+                });
+            }
         }
         // Zero buttons for vitals sliders
         const zeroMap = {
